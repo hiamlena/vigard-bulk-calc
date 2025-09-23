@@ -6,10 +6,6 @@ function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' �
 
 // ===== Data =====
 const DENSITIES = [
-  { key: "diesel", label: "Дизельное топливо (ДТ)", rho: 0.84, adr: "3" },
-  { key: "gas92", label: "Бензин АИ-92", rho: 0.74, adr: "3" },
-  { key: "gas95", label: "Бензин АИ-95", rho:  0.75, adr: "3" },
-
   { key: "molasses", label: "Патока", rho: 1.40, adr: "—" },
   { key: "syrup", label: "Сироп сахарный", rho: 1.30, adr: "—" },
   { key: "wine", label: "Вино", rho: 0.99, adr: "—" },
