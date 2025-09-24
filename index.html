@@ -57,7 +57,7 @@
       <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0369a1">V</div>
       <div>
         <h1>Вигард — калькулятор наливных грузов</h1>
-        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем. <b>Спирт</b> временно не оформляем (расчёт доступен).</div>
+        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем.</div>
       </div>
     </div>
 
@@ -126,7 +126,7 @@
         </div>
       </div>
       <div class="small" id="mapsNote" style="display:none;margin-top:6px">
-        Google: грузовые ограничения учитываются не полностью (ставим поправку при «грузовой маршрут»). Яндекс: строим через JS-API; строгий truck-routing через HTTP API недоступен из браузера — применяем поправку.
+        Google/Яндекс из браузера учитывают грузовые ограничения не полностью — при включённом «грузовой маршрут» применяем поправку к длине.
       </div>
       <div class="kpi" style="margin-top:12px">
         <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
@@ -145,7 +145,6 @@
     <div class="grid" style="margin-top:16px">
       <div class="card"><div class="c">
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
-        <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div class="small" style="margin:6px 0; display:flex; gap:12px; align-items:center">
           <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="chkAllSame"> Все отсеки — как #1</label>
           <button class="btn" id="btnAddProduct">Добавить продукт</button>
