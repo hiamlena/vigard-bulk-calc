@@ -101,7 +101,7 @@
           <label>Режим расстояния</label>
           <select id="distanceMode">
             <option value="manual">Вручную</option>
-            <option value="maps">Через карты</option>
+            <option value="gmaps">Через карты</option>
           </select>
         </div>
         <div>
@@ -111,7 +111,7 @@
       </div>
 
       <!-- Поля маршрута ВСЕГДА видны -->
-      <div class="row cols-3" id="routeRow">
+      <div class="row cols-3">
         <div>
           <label>Откуда (город)</label>
           <input id="routeFrom" placeholder="Введите название">
@@ -120,13 +120,13 @@
           <label>Куда (город)</label>
           <input id="routeTo" placeholder="Введите название">
         </div>
-        <div style="align-self:end" class="btns">
+        <div id="gmapsRow" style="align-self:end" class="btns">
           <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
           <label class="small" style="display:flex;gap:6px;align-items:center"><input id="truckMode" type="checkbox" checked> грузовой режим*</label>
           <button class="btn" id="btnRoute">Построить маршрут</button>
         </div>
       </div>
-      <div class="small" id="mapsNote" style="display:none;margin-top:6px">* «Грузовой режим» приблизительно учитывает объезды (добавляет ~12% к километражу). Для строгих ограничений можно интегрировать HERE/Yandex Truck API.</div>
+      <div class="small" id="gmapsNote" style="display:none;margin-top:6px">* «Грузовой режим» приблизительно учитывает объезды (добавляет ~12% к километражу). Для строгих ограничений можно интегрировать HERE/Yandex Truck API.</div>
 
       <div class="row cols-3" style="margin-top:8px">
         <div>
@@ -157,42 +157,31 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
 
         <div id="tankSection">
-          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
+          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px;gap:12px;flex-wrap:wrap">
             <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
             <button class="btn" id="btnAddProduct">+ Добавить груз</button>
           </div>
 
-          <!-- ==== Панель пакетного распределения ==== -->
-          <div class="row cols-3" style="margin:6px 0 10px">
-            <div>
-              <label>Сколько везём (масса), т</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalMassT" type="number" placeholder="например 12">
-                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
-              </div>
-              <div class="small">Если включено «все отсеки — один груз», плотность берётся из #1, иначе — из каждой строки.</div>
-            </div>
-            <div>
-              <label>Сколько везём (объём), м³</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolM3" type="number" placeholder="например 28.5">
-                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
-              </div>
-            </div>
-            <div>
-              <label>…или объём, л</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolL" type="number" placeholder="например 28500">
-                <button class="btn" id="btnDistributeL" style="white-space:nowrap">Распределить по литрам</button>
+          <div class="row inline" style="gap:8px;flex-wrap:wrap;margin:0 0 12px">
+            <div style="flex:1;min-width:260px">
+              <label>Сколько везём</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <input id="bulkValue" placeholder="например 12т или 28500 л" style="flex:1;min-width:160px">
+                <select id="bulkUnit">
+                  <option value="t">т</option>
+                  <option value="kg">кг</option>
+                  <option value="m3">м³</option>
+                  <option value="l">л</option>
+                </select>
+                <button class="btn" id="bulkApply">Распределить</button>
               </div>
             </div>
           </div>
-          <!-- ==== /Панель пакетного распределения ==== -->
 
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th><th>т</th><th>м³</th>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>м³</th><th>т</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
@@ -202,8 +191,6 @@
           <div class="small" id="fitSummary" style="margin-top:6px"></div>
 
           <div class="btns" style="margin-top:8px">
-            <button class="btn" id="addCompartment">+ Отсек</button>
-            <button class="btn" id="removeCompartment">− Отсек</button>
             <button class="btn" id="fillMax">Заполнить по максимуму</button>
             <button class="btn" id="clearAll">Очистить</button>
           </div>
@@ -222,7 +209,7 @@
         <h3 style="margin:0 0 8px">Итоги и предупреждения</h3>
         <div class="kpi">
           <div class="box"><div class="t">Сумма литров</div><div class="v" id="sumL">—</div></div>
-          <div class="box"><div class="t">Сумма массы</div><div class="v" id="sumKg">—</div></div>
+          <div class="box"><div class="t">Сумма тонн</div><div class="v" id="sumT">—</div></div>
         </div>
         <ul id="warnList" class="small" style="margin-top:8px"></ul>
         <div style="margin-top:16px">

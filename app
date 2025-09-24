@@ -2,7 +2,25 @@
 function $(id){ return document.getElementById(id); }
 function num(v,def=0){ const n=parseFloat(v); return isFinite(n)?n:def; }
 function fmtL(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' л':'—'; }
-function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' кг':'—'; }
+function fmtT(n){
+  if(!isFinite(n)) return '—';
+  const opts=n>=100?
+    {maximumFractionDigits:2, minimumFractionDigits:0}:
+    {maximumFractionDigits:3, minimumFractionDigits:0};
+  return n.toLocaleString('ru-RU', opts)+' т';
+}
+function fmtLitersDetailed(n){
+  if(!isFinite(n)) return '—';
+  return n.toLocaleString('ru-RU', {maximumFractionDigits:2, minimumFractionDigits:0});
+}
+function fmtM3(n){
+  if(!isFinite(n)) return '—';
+  return n.toLocaleString('ru-RU', {maximumFractionDigits:3, minimumFractionDigits:3});
+}
+function fmtTonsDetailed(n){
+  if(!isFinite(n)) return '—';
+  return n.toLocaleString('ru-RU', {maximumFractionDigits:3, minimumFractionDigits:3});
+}
 
 // ===== Data =====
 const BASE_PRODUCTS = [
@@ -114,19 +132,16 @@ function getAllTrailers(){
   return [...BASE_TRAILERS, ...custom];
 }
 function renderTrailerSelect(selectedId){
-  const sel = $('trailerSelect'); if(!sel) return;
-  sel.innerHTML='';
+  const sel = $('trailerSelect'); sel.innerHTML='';
   getAllTrailers().forEach(t=>{ const opt=document.createElement('option'); opt.value=t.id; opt.textContent=t.name; if(t.id===selectedId) opt.selected=true; sel.appendChild(opt); });
 }
 function renderTractorSelect(selected){
-  const sel=$('tractorSelect'); if(!sel) return;
-  sel.innerHTML='';
+  const sel=$('tractorSelect'); sel.innerHTML='';
   getAllTrucks().forEach(num=>{ const opt=document.createElement('option'); opt.value=num; opt.textContent=num; sel.appendChild(opt); });
   if(selected){ sel.value=selected; }
 }
 function setTrailerInfo(t){
-  const info=$('trailerInfo'); if(!info) return;
-  if(!t){ info.textContent=''; return; }
+  const info=$('trailerInfo'); if(!t){ info.textContent=''; return; }
   if(t.type==='tanker') info.innerHTML=`Тип: цистерна · Оси: ${t.axles} · Тара: ${t.tareKg||'—'} кг · Отсеки: ${t.compartmentsLiters.join(' / ')} л (∑ ${t.compartmentsLiters.reduce((a,b)=>a+b,0)} л)`;
   else info.innerHTML=`Тип: площадка · Оси: ${t.axles} · Тара: ${t.tareKg||'—'} кг · Позиции: ${t.positions||4}`;
 }
@@ -136,36 +151,43 @@ function densityOptionsHtml(selectedKey){
   return getAllProducts().map(d=>`<option value="${d.key}" ${d.key===selectedKey?'selected':''}>${d.label}</option>`).join('');
 }
 function buildTankRows(state){
-  const tb=$('tankBody'); if(!tb) return;
-  tb.innerHTML='';
-  const caps=state.caps||[]; const capsLine=$('capsLine'); if(capsLine) capsLine.textContent=caps.map((c,i)=>`#${i+1}: ${c} л`).join(', ');
+  const tb=$('tankBody'); tb.innerHTML='';
+  const caps=state.caps||[];
+  $('capsLine').textContent=caps.map((c,i)=>`#${i+1}: ${Number(c).toLocaleString('ru-RU')} л`).join(', ');
   state.rows.forEach((row,idx)=>{
     const tr=document.createElement('tr');
+    const adrOptions=['Не знаю','3','8','—'];
+    const currentAdr=row.adr||'Не знаю';
+    if(!adrOptions.includes(String(currentAdr))) adrOptions.push(String(currentAdr));
+    tr.dataset.index=String(idx);
     tr.innerHTML=`
       <td><span class="pill">#${idx+1}</span><div class="cap">лимит ${caps[idx]??'—'} л</div></td>
       <td><select class="selType">${densityOptionsHtml(row.typeKey||'diesel')}</select></td>
-      <td><select class="selAdr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select></td>
+      <td><select class="selAdr">${adrOptions.map(o=>`<option value="${o}" ${String(currentAdr)===String(o)?'selected':''}>${o}</option>`).join('')}</select></td>
       <td><input class="inpRho" type="number" step="0.001" value="${row.rho??0.84}"></td>
-      <td><input class="inpL" type="number" value="${row.liters??0}"></td>
-      <td><input class="inpKg" type="number" value="${row.kg??0}"></td>
-      <td><input class="inpT" type="number" readonly value="${((row.kg??0)/1000)||0}"></td>
-      <td><input class="inpM3" type="number" readonly value="${((row.liters??0)/1000)||0}"></td>`;
+      <td><input class="inpL" type="number" step="0.01" value="${row.liters??0}"></td>
+      <td><input class="inpM3" type="number" readonly value="${(row.m3??(row.liters||0)/1000).toFixed(3)}"></td>
+      <td><input class="inpT" type="number" readonly value="${(row.tons??((row.liters||0)*(row.rho||0)/1000)).toFixed(3)}"></td>`;
     tb.appendChild(tr);
   });
 }
 function ensureRowsMatchCaps(state){
   const need=state.caps.length;
-  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'3', rho:0.84, liters:0, kg:0});
+  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'Не знаю', adrEdited:false, rho:0.84, liters:0, tons:0, m3:0});
   while(state.rows.length>need) state.rows.pop();
 }
 function tankerFromPreset(compartments){
-  return { caps:[...compartments], rows: compartments.map(()=>({typeKey:'diesel', adr:'3', rho:0.84, liters:0, kg:0})) };
+  return {
+    caps:[...compartments],
+    rows: compartments.map(()=>({typeKey:'diesel', adr:'Не знаю', adrEdited:false, rho:0.84, liters:0, tons:0, m3:0})),
+    sameCargo:false,
+    lastDistribution:null
+  };
 }
 
 // === Platform table
 function buildPlatRows(state){
-  const tb=$('platBody'); if(!tb) return;
-  tb.innerHTML='';
+  const tb=$('platBody'); tb.innerHTML='';
   const n=state.positions||4; for(let i=0;i<n;i++){
     const tr=document.createElement('tr'); const m=state.masses?.[i]||0;
     tr.innerHTML=`<td><span class="pill">#${i+1}</span></td><td><input class="inpMass" type="number" value="${m}"></td>`; tb.appendChild(tr);
@@ -188,63 +210,35 @@ let app={
 };
 if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // миграция на новое имя
 
-function loadState(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null'); if(s) app=s; }catch(e){} }
+function normalizeAppState(){
+  const ts=app.trailerState;
+  if(!ts) return;
+  if(ts.type==='tanker'){
+    ts.caps=Array.isArray(ts.caps)? ts.caps:[];
+    ts.rows=(Array.isArray(ts.rows)? ts.rows:ts.caps.map(()=>({}))).map(row=>{
+      const typeKey=row?.typeKey||'diesel';
+      const rho=num(row?.rho,0.84)||0.84;
+      const liters=num(row?.liters,0);
+      const tons=isFinite(row?.tons)? Number(row.tons): (liters*rho)/1000;
+      const m3=isFinite(row?.m3)? Number(row.m3): liters/1000;
+      const adr=row?.adr||'Не знаю';
+      const adrEdited=!!row?.adrEdited;
+      return {typeKey, adr, adrEdited, rho, liters, tons, m3};
+    });
+    if(ts.sameCargo===undefined) ts.sameCargo=false;
+    if(ts.lastDistribution===undefined) ts.lastDistribution=null;
+  } else if(ts.type==='platform'){
+    ts.masses=Array.isArray(ts.masses)? ts.masses:[];
+  }
+}
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null');
+    if(s) app=s;
+  }catch(e){}
+  normalizeAppState();
+}
 function saveState(){ localStorage.setItem(LS_KEYS.state, JSON.stringify(app)); }
-
-// ===== Bulk distribute helpers =====
-function distributeByVolumeLiters(totalLiters){
-  if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  totalLiters = Math.max(0, num(totalLiters, 0));
-  const tstate = app.trailerState;
-  const rowsEl = $('tankBody') ? [...$('tankBody').querySelectorAll('tr')] : [];
-
-  let restL = totalLiters;
-  for(let i=0;i<tstate.caps.length;i++){
-    const cap = tstate.caps[i] || 0;
-    const tr  = rowsEl[i];
-    if(!tr) continue;
-    const putL = Math.min(restL, cap);
-    tr.querySelector('.inpL').value = putL.toFixed(0);
-    tr.querySelector('.inpKg').value = ''; // пересчёт по ρ сделает recalc()
-    restL -= putL;
-    if(restL<=0) break;
-  }
-  recalc();
-}
-function distributeByMassKg(totalKg){
-  if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  totalKg = Math.max(0, num(totalKg, 0));
-  const tstate = app.trailerState;
-  const rowsEl = $('tankBody') ? [...$('tankBody').querySelectorAll('tr')] : [];
-  const same = $('chkAllSame')?.checked;
-
-  let restKg = totalKg;
-  for(let i=0;i<tstate.caps.length;i++){
-    const capL = tstate.caps[i] || 0;
-    const tr   = rowsEl[i];
-    if(!tr) continue;
-
-    // ρ: если все отсеки — один груз, берём из первой строки, иначе по строке
-    let rho;
-    if(same){
-      const tr0 = rowsEl[0];
-      rho = num(tr0.querySelector('.inpRho').value, 1);
-    } else {
-      rho = num(tr.querySelector('.inpRho').value, 1);
-    }
-    if(rho <= 0) rho = 1;
-
-    const litersAvailableByMass = restKg / rho;
-    const putL = Math.min(capL, litersAvailableByMass);
-
-    tr.querySelector('.inpL').value = putL.toFixed(0);
-    tr.querySelector('.inpKg').value = '';
-    restKg -= putL * rho;
-
-    if(restKg <= 0) break;
-  }
-  recalc();
-}
 
 // ===== Init / Render =====
 function selectTrailer(id){
@@ -261,26 +255,35 @@ function renderCurrent(){
   renderTrailerSelect(app.selectedTrailerId);
   renderTractorSelect(app.tractorPlate);
   if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
-  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; if($('tractorAxles')) $('tractorAxles').value=String(app.tractorAxles||2);
-  if($('tractorSelect')) $('tractorSelect').value=app.tractorPlate;
+  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; $('tractorAxles').value=String(app.tractorAxles||2);
+  $('tractorSelect').value=app.tractorPlate;
 
   const provEl = $('provider'); if (provEl) provEl.value = app.provider||'google';
 
+  // --- режим расстояния + поля маршрута ---
   const isMaps = (app.distanceMode === 'gmaps' || app.distanceMode === 'maps');
-  if($('distanceMode')) $('distanceMode').value = isMaps ? 'gmaps' : 'manual';
+  $('distanceMode').value = isMaps ? 'gmaps' : 'manual';
 
-  if($('distanceKm')) $('distanceKm').value = app.distanceKm || '';
-  if($('ratePerKm'))  $('ratePerKm').value  = app.ratePerKm || '';
-  if($('trips'))      $('trips').value      = app.trips || 1;
+  $('distanceKm').value = app.distanceKm || '';
+  $('ratePerKm').value  = app.ratePerKm || '';
+  $('trips').value      = app.trips || 1;
 
-  if($('routeFrom'))  $('routeFrom').value  = app.routeFrom || '';
-  if($('routeTo'))    $('routeTo').value    = app.routeTo   || '';
+  $('routeFrom').value  = app.routeFrom || '';
+  $('routeTo').value    = app.routeTo   || '';
 
-  if($('gmapsRow'))  $('gmapsRow').style.display  = isMaps ? 'grid'  : 'none';
-  if($('gmapsNote')) $('gmapsNote').style.display = isMaps ? 'block' : 'none';
+  const gmapsRowEl = $('gmapsRow');
+  if(gmapsRowEl) gmapsRowEl.style.display = isMaps ? 'flex' : 'none';
+  const gmapsNoteEl = $('gmapsNote');
+  if(gmapsNoteEl) gmapsNoteEl.style.display = isMaps ? 'block' : 'none';
 
-  if(app.trailerState.type==='tanker'){ if($('tankSection')) $('tankSection').style.display='block'; if($('platformSection')) $('platformSection').style.display='none'; ensureRowsMatchCaps(app.trailerState); buildTankRows(app.trailerState); }
-  else { if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
+  if(app.trailerState.type==='tanker'){
+    $('tankSection').style.display='block'; $('platformSection').style.display='none';
+    ensureRowsMatchCaps(app.trailerState);
+    buildTankRows(app.trailerState);
+    if(app.trailerState.sameCargo===undefined) app.trailerState.sameCargo=false;
+    const chk=$('chkAllSame'); if(chk) chk.checked=!!app.trailerState.sameCargo;
+  }
+  else { $('tankSection').style.display='none'; $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
 
   recalc();
 }
@@ -288,86 +291,117 @@ function renderCurrent(){
 // ===== Recalc =====
 function recalc(){
   if(!app.trailerState){ return; }
-  const tstate=app.trailerState; const warns=[]; let sumL=0, sumKg=0;
+  const tstate=app.trailerState; const warns=[]; let sumL=0, sumT=0;
   if($('tractorSelect')) app.tractorPlate=$('tractorSelect').value||app.tractorPlate;
 
   if(tstate.type==='tanker'){
     const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
+    ensureRowsMatchCaps(tstate);
+    const same = $('chkAllSame')?.checked || false;
+    tstate.sameCargo = same;
+
+    let firstType=null, firstRho=1, firstAdr='Не знаю', firstAdrEdited=false;
+    let manualOverflowLiters=0, manualOverflowTons=0;
+
     rows.forEach((tr,i)=>{
-      const typeKey=tr.querySelector('.selType').value;
-      const dict=getAllProducts().find(d=>d.key===typeKey) || getAllProducts()[0];
+      const prev=tstate.rows[i]||{};
+      const typeEl=tr.querySelector('.selType');
+      let typeKey=typeEl?.value || prev.typeKey || 'diesel';
+      let dict=getAllProducts().find(d=>d.key===typeKey);
+      if(!dict){ dict=getAllProducts()[0]; if(dict){ typeKey=dict.key; if(typeEl) typeEl.value=dict.key; } }
 
-      // авто-подстановка ADR и ρ
       const rhoInp=tr.querySelector('.inpRho');
-      if(!rhoInp.value) rhoInp.value = dict.rho;
+      const prevType=prev.typeKey;
+      if(prevType!==typeKey && rhoInp) rhoInp.value=dict?.rho??rhoInp.value||1;
+      let rho=num(rhoInp?.value, dict?.rho||1);
+      if(!isFinite(rho) || rho<=0){ rho=dict?.rho||1; if(rhoInp) rhoInp.value=rho; }
+
       const adrSel=tr.querySelector('.selAdr');
-      if(adrSel && adrSel.value==='Не знаю'){ const opt=[...adrSel.options].find(o=>o.value===String(dict.adr)); if(opt) adrSel.value=opt.value; }
+      let adr=adrSel? adrSel.value : (prev.adr||'Не знаю');
+      let adrEdited=!!prev.adrEdited;
+      if(prevType!==typeKey && !adrEdited){
+        adr='Не знаю';
+      }
+      if(adrSel && adrSel.value!==adr) adrSel.value=adr;
 
-      const rho=num(rhoInp.value, dict.rho);
-      const adr=adrSel.value;
-      let liters=num(tr.querySelector('.inpL').value, NaN);
-      let kg=num(tr.querySelector('.inpKg').value, NaN);
+      if(i===0){
+        firstType=typeKey; firstRho=rho; firstAdr=adr; firstAdrEdited=adrEdited;
+      }else if(same){
+        if(typeEl && typeEl.value!==firstType) typeEl.value=firstType;
+        if(rhoInp) rhoInp.value=firstRho;
+        if(adrSel) adrSel.value=firstAdr;
+        typeKey=firstType; rho=firstRho; adr=firstAdr; adrEdited=firstAdrEdited;
+      }
 
-      if(!isFinite(liters) && isFinite(kg)) liters = rho>0? kg/rho : 0;
-      if(!isFinite(kg) && isFinite(liters)) kg = liters*rho;
-      if(!isFinite(liters)) liters=0; if(!isFinite(kg)) kg=0;
+      const lInp=tr.querySelector('.inpL');
+      let liters=num(lInp?.value,0);
+      if(!isFinite(liters)) liters=0;
+      if(liters<0){ warns.push(`Отсек #${i+1}: отрицательный объём, обнулил`); liters=0; if(lInp) lInp.value='0'; }
+      const cap=tstate.caps[i]??Infinity;
+      const over=Math.max(0, liters-cap);
+      if(over>0){ warns.push(`Переполнение отсека #${i+1}: ${fmtLitersDetailed(liters)} л > лимита ${cap} л`); }
 
-      if(liters<0||kg<0) warns.push(`Отсек #${i+1}: отрицательные значения`);
-      const cap=tstate.caps[i]??Infinity; if(liters>cap) warns.push(`Переполнение отсека #${i+1}: ${Math.round(liters)} л > лимита ${cap} л`);
+      const m3=liters/1000;
+      const tons=(liters*rho)/1000;
+      const m3Inp=tr.querySelector('.inpM3');
+      const tInp=tr.querySelector('.inpT');
+      if(m3Inp) m3Inp.value=isFinite(m3)? m3.toFixed(3):'0.000';
+      if(tInp) tInp.value=isFinite(tons)? tons.toFixed(3):'0.000';
 
-      tr.querySelector('.inpL').value = liters || 0; tr.querySelector('.inpKg').value = kg || 0;
-      const tVal = kg/1000, m3 = liters/1000;
-      tr.querySelector('.inpT').value = isFinite(tVal)? tVal.toFixed(3) : 0;
-      tr.querySelector('.inpM3').value = isFinite(m3)? m3.toFixed(3) : 0;
-
-      tstate.rows[i]={typeKey, adr, rho, liters, kg, t:tVal, m3};
-
-      sumL+=liters; sumKg+=kg;
+      tstate.rows[i]={typeKey, adr, adrEdited, rho, liters, tons, m3};
+      sumL+=liters; sumT+=tons;
+      manualOverflowLiters+=over;
+      manualOverflowTons+=(over*rho)/1000;
     });
 
-    // --- Итог по влезанию ---
-    const capsLine=$('capsLine');
-    if(capsLine) capsLine.textContent = (tstate.caps || []).map((capL, i) => `#${i+1}: ${capL} л`).join(', ');
+    if(manualOverflowLiters>0){ tstate.lastDistribution=null; }
 
-    let fitL=0, fitKg=0, leftL=0, leftKg=0;
+    const capsLineEl=$('capsLine');
+    if(capsLineEl){ capsLineEl.textContent=(tstate.caps||[]).map((capL,i)=>`#${i+1}: ${Number(capL).toLocaleString('ru-RU')} л`).join(', '); }
+
+    let fitL=0, fitTons=0, fitM3=0;
     (tstate.rows||[]).forEach((r,i)=>{
-      const capL=tstate.caps[i]??0;
-      const askL=r.liters||0;
-      const putL=Math.min(askL,capL);
-      const overL=Math.max(0,askL-capL);
-      fitL+=putL; fitKg+=putL*(r.rho||1);
-      leftL+=overL; leftKg+=overL*(r.rho||1);
+      const cap=tstate.caps[i]??0;
+      const liters=r.liters||0;
+      const rho=r.rho||0;
+      const put=Math.min(liters, cap);
+      fitL+=put;
+      fitM3+=put/1000;
+      fitTons+=(put*rho)/1000;
     });
-    const fitT=fitKg/1000, fitM3=fitL/1000, leftT=leftKg/1000, leftM3=leftL/1000;
+
+    let overflow={ liters: manualOverflowLiters, tons: manualOverflowTons, m3: manualOverflowLiters/1000 };
+    if((overflow.liters||0) <= 0 && tstate.lastDistribution){ overflow={ ...tstate.lastDistribution }; }
+
     const parts=(tstate.caps||[]).map((capL,i)=>{
       const r=tstate.rows[i]||{};
-      const maxKg=capL*((r.rho||1));
-      const maxT=maxKg/1000;
-      return `#${i+1}: ${capL} л (≈ ${Math.round(maxKg)} кг, ${maxT.toFixed(2)} т)`;
+      const maxM3=capL/1000;
+      const maxT=(capL*(r.rho||0))/1000;
+      return `#${i+1}: ${Number(capL).toLocaleString('ru-RU')} л (≈ ${fmtM3(maxM3)} м³ / ${fmtTonsDetailed(maxT)} т)`;
     });
-    const fitBox = $('fitSummary');
-    if (fitBox){
-      fitBox.innerHTML =
-        `Влезет по лимитам: <b>${Math.round(fitL).toLocaleString('ru-RU')} л</b> `+
-        `(≈ ${Math.round(fitKg).toLocaleString('ru-RU')} кг, ${fitT.toFixed(3)} т, ${fitM3.toFixed(3)} м³). `+
-        `Не влезло: <b>${Math.round(leftL).toLocaleString('ru-RU')} л</b> `+
-        `(≈ ${Math.round(leftKg).toLocaleString('ru-RU')} кг, ${leftT.toFixed(3)} т, ${leftM3.toFixed(3)} м³).<br>`+
-        parts.join('; ');
+
+    const fitBox=$('fitSummary');
+    if(fitBox){
+      let html=`Влезет по лимитам: <b>${fmtLitersDetailed(fitL)}</b> л / ${fmtM3(fitM3)} м³ / ${fmtTonsDetailed(fitTons)} т`;
+      if((overflow.liters||0) > 0){
+        html+=`<br>Не влезло: <b>${fmtLitersDetailed(overflow.liters)}</b> л / ${fmtM3(overflow.m3||0)} м³ / ${fmtTonsDetailed(overflow.tons||0)} т`;
+      }
+      if(parts.length) html+=`<br>${parts.join('; ')}`;
+      fitBox.innerHTML=html;
     }
 
   } else {
     const tb=$('platBody'); const rows=[...tb.querySelectorAll('tr')];
-    let masses=[]; rows.forEach((tr,i)=>{ let m=num(tr.querySelector('.inpMass').value,0); if(m<0){warns.push(`Позиция #${i+1}: отрицательная масса`); m=0;} masses[i]=m; sumKg+=m; });
+    let masses=[]; rows.forEach((tr,i)=>{ let m=num(tr.querySelector('.inpMass').value,0); if(m<0){warns.push(`Позиция #${i+1}: отрицательная масса`); m=0;} masses[i]=m; sumT+=m/1000; });
     tstate.masses=masses; sumL=NaN;
   }
 
-  if($('sumL')) $('sumL').textContent = isNaN(sumL)? '—' : fmtL(sumL);
-  if($('sumKg')) $('sumKg').textContent = fmtKg(sumKg);
+  $('sumL').textContent = isNaN(sumL)? '—' : fmtL(sumL);
+  if($('sumT')) $('sumT').textContent = fmtT(sumT);
 
   const ul=$('warnList'); if (ul){
-    ul.innerHTML=''; 
-    if(warns.length===0){ const li=document.createElement('li'); li.textContent='Ошибок не обнаружено.'; ul.appendChild(li);} 
-    else { warns.forEach(w=>{ const li=document.createElement('li'); li.innerHTML=`<span class="warn">⚠</span> ${w}`; ul.appendChild(li); }); }
+    ul.innerHTML='';
+    if(warns.length===0){ const li=document.createElement('li'); li.textContent='Ошибок не обнаружено.'; ul.appendChild(li);} else { warns.forEach(w=>{ const li=document.createElement('li'); li.innerHTML=`<span class="warn">⚠</span> ${w}`; ul.appendChild(li); }); }
   }
 
   // маршрут/стоимость
@@ -381,11 +415,11 @@ function recalc(){
   if($('kpiCost')) $('kpiCost').textContent = (isFinite(cost)&&cost>0)? cost.toLocaleString('ru-RU')+' ₽' : '—';
 
   const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
-  let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, `Итоги: ${(isNaN(sumL)?'-':Math.round(sumL)+' л')}, ${(sumKg/1000).toFixed(2)} т`];
+  let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, `Итоги: ${(isNaN(sumL)?'-':Math.round(sumL)+' л')}, ${sumT.toFixed(3)} т`];
   if(tstate.type==='tanker'){
-    tstate.rows.forEach((r,i)=>{ const d=getAllProducts().find(x=>x.key===r.typeKey); lines.push(`#${i+1}: ${(d?.label)||r.typeKey}, ADR ${r.adr}, ρ=${r.rho}, ${Math.round(r.liters)} л / ${Math.round(r.kg)} кг / ${(r.kg/1000).toFixed(3)} т / ${(r.liters/1000).toFixed(3)} м³`); });
+    tstate.rows.forEach((r,i)=>{ const d=getAllProducts().find(x=>x.key===r.typeKey); lines.push(`#${i+1}: ${(d?.label)||r.typeKey}, ADR ${r.adr}, ρ=${r.rho}, ${fmtLitersDetailed(r.liters||0)} л / ${(r.m3||0).toFixed(3)} м³ / ${(r.tons||0).toFixed(3)} т`); });
   } else {
-    (tstate.masses||[]).forEach((kg,i)=>{ lines.push(`#${i+1}: ${Math.round(kg)} кг`); });
+    (tstate.masses||[]).forEach((kg,i)=>{ lines.push(`#${i+1}: ${(kg/1000).toFixed(3)} т`); });
   }
   const routeStr=(app.routeFrom||app.routeTo)? `Маршрут: ${app.routeFrom||'?'} → ${app.routeTo||'?'}`:'';
   const costStr=(isFinite(cost)&&cost>0)? `Стоимость: ${cost.toLocaleString('ru-RU')} ₽ (${app.distanceKm} км × ${app.ratePerKm} ₽/км × ${app.trips} рейс.)`:'';
@@ -398,7 +432,7 @@ function recalc(){
 // ===== Events =====
 function bind(){
   if($('trailerSelect')) $('trailerSelect').addEventListener('change', e=>selectTrailer(e.target.value));
-  if($('tractorSelect')) $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; if($('tractorAxles')) $('tractorAxles').value=String(ax); saveState(); recalc(); });
+  if($('tractorSelect')) $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; $('tractorAxles').value=String(ax); saveState(); recalc(); });
   if($('tractorAxles')) $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
 
   const provEl = $('provider');
@@ -408,8 +442,10 @@ function bind(){
   if (dmEl) dmEl.addEventListener('change', e=>{
     app.distanceMode=e.target.value;
     const isMaps = (app.distanceMode==='gmaps' || app.distanceMode==='maps');
-    if($('gmapsRow')) $('gmapsRow').style.display=(isMaps)?'grid':'none';
-    if($('gmapsNote')) $('gmapsNote').style.display=(isMaps)?'block':'none';
+    const gmapsRowEl = $('gmapsRow');
+    if(gmapsRowEl) gmapsRowEl.style.display = isMaps ? 'flex' : 'none';
+    const gmapsNoteEl = $('gmapsNote');
+    if(gmapsNoteEl) gmapsNoteEl.style.display = isMaps ? 'block' : 'none';
     saveState(); maybeInitMaps();
   });
 
@@ -431,36 +467,62 @@ function bind(){
   });
 
   // таблицы
-  ['tankBody','platBody'].forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', recalc); });
+  const platBodyEl = $('platBody');
+  if(platBodyEl) platBodyEl.addEventListener('input', recalc);
+
   const tankBodyEl = $('tankBody');
-  if (tankBodyEl) tankBodyEl.addEventListener('change', (e)=>{
-    const tr = e.target.closest('tr');
-    if(!tr) return;
-    if(e.target.classList.contains('selType')){
-      const typeKey = e.target.value;
-      const d = getAllProducts().find(x=>x.key===typeKey);
-      if(d){
-        const rhoInp = tr.querySelector('.inpRho');
-        const adrSel = tr.querySelector('.selAdr');
-        if(rhoInp && !rhoInp.value) rhoInp.value = d.rho;
-        if(adrSel){
-          const opt=[...adrSel.options].find(o=>o.value===String(d.adr));
-          if(opt) adrSel.value=opt.value;
+  if (tankBodyEl){
+    tankBodyEl.addEventListener('input', (e)=>{
+      if(app.trailerState?.type==='tanker'){
+        const cls=e.target.classList;
+        if(cls.contains('inpL') || cls.contains('inpRho')){
+          app.trailerState.lastDistribution=null;
         }
+      }
+      recalc();
+    });
+    tankBodyEl.addEventListener('change', (e)=>{
+      const tr = e.target.closest('tr');
+      if(!tr || !app.trailerState || app.trailerState.type!=='tanker') return;
+      const rows=[...tankBodyEl.querySelectorAll('tr')];
+      const idx=rows.indexOf(tr);
+      if(idx<0) return;
+      const rowState=app.trailerState.rows[idx]||{};
+      if(e.target.classList.contains('selType')){
+        const typeKey = e.target.value;
+        const d = getAllProducts().find(x=>x.key===typeKey);
+        if(d){
+          const rhoInp = tr.querySelector('.inpRho');
+          if(rhoInp) rhoInp.value = d.rho;
+        }
+        rowState.typeKey=typeKey;
+        rowState.adrEdited=false;
+        rowState.adr='Не знаю';
+        const adrSel=tr.querySelector('.selAdr');
+        if(adrSel) adrSel.value='Не знаю';
+        app.trailerState.rows[idx]=rowState;
+        app.trailerState.lastDistribution=null;
+        recalc();
+      } else if(e.target.classList.contains('selAdr')){
+        rowState.adr=e.target.value;
+        rowState.adrEdited=true;
+        app.trailerState.rows[idx]=rowState;
+        app.trailerState.lastDistribution=null;
+        recalc();
+      } else if(e.target.classList.contains('inpRho')){
+        rowState.rho=num(e.target.value, rowState.rho||1);
+        app.trailerState.rows[idx]=rowState;
+        app.trailerState.lastDistribution=null;
         recalc();
       }
-    }
-  });
+    });
+  }
 
   const chkAll = $('chkAllSame');
   if (chkAll) chkAll.addEventListener('change', (e)=>{
-    if(!e.target.checked) return;
-    const tb=$('tankBody'); const first=tb?.querySelector('tr'); if(!first) return;
-    const typeKey=first.querySelector('.selType').value;
-    const rho= num(first.querySelector('.inpRho').value,1);
-    const adr = first.querySelector('.selAdr').value;
-    const rows=[...tb.querySelectorAll('tr')];
-    rows.forEach((tr,i)=>{ if(i===0) return; tr.querySelector('.selType').value=typeKey; tr.querySelector('.inpRho').value=rho; tr.querySelector('.selAdr').value=adr; });
+    if(!app.trailerState || app.trailerState.type!=='tanker') return;
+    app.trailerState.sameCargo=!!e.target.checked;
+    app.trailerState.lastDistribution=null;
     recalc();
   });
 
@@ -484,27 +546,9 @@ function bind(){
 
   // карты
   if($('btnRoute')) $('btnRoute').addEventListener('click', buildRoute);
+  if($('btnGmaps')) $('btnGmaps').addEventListener('click', buildRoute); // поддержка старой кнопки
   if($('mapsKey')) $('mapsKey').addEventListener('input', ()=>maybeInitMaps());
-
-  // пакетное распределение
-  if($('btnDistributeMass')) $('btnDistributeMass').addEventListener('click', ()=>{
-    const t = num($('totalMassT').value, NaN);
-    if(!isFinite(t) || t <= 0){ alert('Укажи массу в тоннах (>0)'); return; }
-    distributeByMassKg(t*1000);
-  });
-  if($('btnDistributeM3')) $('btnDistributeM3').addEventListener('click', ()=>{
-    const m3 = num($('totalVolM3').value, NaN);
-    if(!isFinite(m3) || m3 <= 0){ alert('Укажи объём в м³ (>0)'); return; }
-    distributeByVolumeLiters(m3*1000);
-  });
-  if($('btnDistributeL')) $('btnDistributeL').addEventListener('click', ()=>{
-    const L = num($('totalVolL').value, NaN);
-    if(!isFinite(L) || L <= 0){ alert('Укажи объём в литрах (>0)'); return; }
-    distributeByVolumeLiters(L);
-  });
-
-  // тесты
-  if($('runTests')) $('runTests').addEventListener('click', runTests);
+  if($('gmapsKey')) $('gmapsKey').addEventListener('input', ()=>maybeInitMaps()); // поддержка старого id
 }
 
 // ===== Modal logic (trailers)
@@ -561,7 +605,7 @@ function collectMassesAndPositions(){
   const tstate = app.trailerState; let kg=[], xs=[];
   if(!tstate) return {kg:[],xs:[]};
   if(tstate.type==='tanker'){
-    const n=tstate.rows.length; for(let i=0;i<n;i++){ const row=tstate.rows[i]; const W=num(row.kg,0); const x=LA*(i+1)/(n+1); kg.push(W); xs.push(x); }
+    const n=tstate.rows.length; for(let i=0;i<n;i++){ const row=tstate.rows[i]; const W=num(row.tons,0)*1000; const x=LA*(i+1)/(n+1); kg.push(W); xs.push(x); }
   } else {
     const n=tstate.masses.length; for(let i=0;i<n;i++){ const W=num(tstate.masses[i],0); const x=LA*(i+1)/(n+1); kg.push(W); xs.push(x); }
   }
@@ -596,11 +640,13 @@ function calcAxles(){
 })();
 const _recalc_orig=recalc; recalc=function(){ _recalc_orig(); calcAxles(); };
 const _selectTrailer_orig=selectTrailer; selectTrailer=function(id){ _selectTrailer_orig(id); syncAxleParamsFromTrailer(); calcAxles(); };
+window.addEventListener('load', ()=>{ syncAxleParamsFromTrailer(); calcAxles(); });
 
 // ===== Maps (Google / Yandex) =====
 let _gmapsLoading=false, _gmapsLoaded=false, _ymapsLoading=false, _ymapsLoaded=false, _acFrom=null, _acTo=null, _fromPlaceId=null, _toPlaceId=null, _yaSuggestFrom=null, _yaSuggestTo=null;
 
 function mapsApiKey(){
+  // поддержка и нового (#mapsKey), и старого (#gmapsKey) поля
   return ($('mapsKey')?.value?.trim() || $('gmapsKey')?.value?.trim() || '');
 }
 
@@ -688,30 +734,173 @@ function buildRoute(){
     .catch(err=>alert(err.message||String(err)));
 }
 
-// ===== Tests (subset) =====
+// ===== Tests (без проверки на блокировку спирта)
 function runTests(){
-  const out=$('testResults'); const results=[]; const approx=(a,b,e=2)=>Math.abs(a-b)<=e; const pass=n=>results.push(`<div class='pass'>✔ ${n}</div>`); const fail=(n,m='')=>results.push(`<div class='fail'>✘ ${n}${m?': '+m:''}</div>`);
+  const out=$('testResults');
+  const results=[];
+  const approx=(a,b,e=0.01)=>Math.abs(a-b)<=e;
+  const pass=n=>results.push(`<div class='pass'>✔ ${n}</div>`);
+  const fail=(n,m='')=>results.push(`<div class='fail'>✘ ${n}${m?': '+m:''}</div>`);
   const backup=JSON.stringify(app);
   try{
     selectTrailer('MO0882_23');
-    let tb=$('tankBody'); let first=tb.querySelector('tr');
-    first.querySelector('.selType').value='diesel'; first.querySelector('.inpRho').value='0.84';
-    first.querySelector('.inpL').value='1000'; first.querySelector('.inpKg').value=''; recalc();
-    let kg=parseInt(first.querySelector('.inpKg').value); if(kg===840) pass('ρ: 1000 л ДТ → 840 кг'); else fail('ρ прямой', `получили ${kg}`);
-    first.querySelector('.inpKg').value='1200'; first.querySelector('.inpL').value=''; recalc();
-    let l=parseInt(first.querySelector('.inpL').value); if(approx(l,1429,2)) pass('ρ: 1200 кг ДТ → ~1429 л'); else fail('ρ обратный', `получили ${l}`);
+    const tb=$('tankBody');
+    const first=tb?.querySelector('tr');
+    if(!first) throw new Error('Нет строки для теста');
 
-    selectTrailer('ER8977_23');
-    if($('platformSection').style.display==='block' && $('tankSection').style.display==='none') pass('Площадка рендерится'); else fail('Площадка рендер');
+    first.querySelector('.selType').value='syrup';
+    first.querySelector('.selType').dispatchEvent(new Event('change',{bubbles:true}));
+    recalc();
+    const rhoVal=parseFloat(first.querySelector('.inpRho').value);
+    if(approx(rhoVal,1.30,0.001)) pass('ρ берётся из справочника'); else fail('ρ из справочника', rhoVal);
+    const adrVal=first.querySelector('.selAdr').value;
+    if(adrVal==='Не знаю') pass('ADR сбрасывается на «Не знаю»'); else fail('ADR по умолчанию', adrVal);
 
+    first.querySelector('.inpL').value='1000';
+    recalc();
+    const tonsVal=parseFloat(first.querySelector('.inpT').value);
+    const m3Val=parseFloat(first.querySelector('.inpM3').value);
+    if(approx(tonsVal,1.30,0.001)) pass('1000 л → 1.300 т'); else fail('Конверсия в т', tonsVal);
+    if(approx(m3Val,1.00,0.001)) pass('1000 л → 1.000 м³'); else fail('Конверсия в м³', m3Val);
+
+    const chk=$('chkAllSame'); if(chk){ chk.checked=true; chk.dispatchEvent(new Event('change',{bubbles:true})); }
+    distributeByMassKg(12000);
+    const litersAfter=parseFloat(first.querySelector('.inpL').value);
+    if(approx(litersAfter,9230.77,0.2)) pass('Распределение по массе учитывает ρ'); else fail('Распределение по массе', litersAfter);
+
+    distributeByLiters(28500);
+    const totalLiters=app.trailerState.rows.reduce((s,r)=>s+(r.liters||0),0);
+    if(approx(totalLiters,28500,0.5)) pass('Распределение по литрам учитывает лимиты'); else fail('Распределение по литрам', totalLiters);
+
+    if($('distanceMode')) $('distanceMode').value='manual';
+    if($('gmapsRow')) $('gmapsRow').style.display='none';
     if($('distanceKm')) $('distanceKm').value='100';
     if($('ratePerKm')) $('ratePerKm').value='50';
-    if($('trips')) $('trips').value='2'; 
+    if($('trips')) $('trips').value='2';
     recalc();
-    const costText=$('kpiCost')?.textContent?.replace(/\D+/g,''); if(parseInt(costText)===10000) pass('Стоимость вручную считается'); else fail('Стоимость вручную', $('kpiCost')?.textContent||'');
-  }catch(e){ fail('Исключение тестов', e.message); }
-  finally{ try{ app=JSON.parse(backup); renderCurrent(); }catch(_){} }
+    const costText=$('kpiCost')?.textContent?.replace(/\D+/g,'');
+    if(parseInt(costText)===10000) pass('Стоимость вручную считается'); else fail('Стоимость вручную', $('kpiCost')?.textContent||'');
+
+    $('recalcAxles')?.click();
+    const gtotal=$('G_total_ax')?.textContent;
+    if(gtotal && gtotal!=='—') pass('Осевые: масса поезда рассчитана'); else fail('Осевые расчёты');
+  }catch(e){ fail('Исключение тестов', e.message||String(e)); }
+  finally{ try{ app=JSON.parse(backup); normalizeAppState(); renderCurrent(); }catch(_){} }
   if(out) out.innerHTML=results.join('');
+}
+
+function normalizeBulkUnit(unit){
+  if(!unit) return null;
+  const u=unit.toLowerCase().replace('.', '');
+  const map={ t:['t','т','тонн','тонна','тонны'], kg:['kg','кг'], m3:['m3','м3','м³','куб','кубм','кубометр','кубометров'], l:['l','л','литр','литра','литров'] };
+  for(const [norm,list] of Object.entries(map)){
+    if(list.includes(u)) return norm;
+  }
+  return null;
+}
+
+function parseBulkValue(raw, fallbackUnit){
+  if(raw==null) raw='';
+  let str=String(raw).trim();
+  if(!str) return null;
+  str=str.replace(',', '.');
+  const match=str.match(/^([\d.\s]+)([a-zа-яё³]*)$/i);
+  let valuePart=str;
+  let unitPart='';
+  if(match){
+    valuePart=match[1];
+    unitPart=match[2];
+  }
+  const value=parseFloat(valuePart.replace(/\s+/g,''));
+  if(!isFinite(value)) return null;
+  let unit=unitPart.replace(/\s+/g,'');
+  if(!unit) unit=fallbackUnit||'t';
+  const normalized=normalizeBulkUnit(unit);
+  if(!normalized) return null;
+  return { value, unit: normalized };
+}
+
+function distributeByLiters(totalLiters){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  const liters=Math.max(0, num(totalLiters,0));
+  const tstate=app.trailerState;
+  const rowsEl=$('tankBody')? [...$('tankBody').querySelectorAll('tr')]:[];
+  rowsEl.forEach(tr=>{ const inp=tr.querySelector('.inpL'); if(inp) inp.value='0'; });
+  let rest=liters;
+  let lastRho=tstate.rows[0]?.rho||1;
+  for(let i=0;i<tstate.caps.length;i++){
+    const cap=tstate.caps[i]||0;
+    const tr=rowsEl[i];
+    if(!tr) continue;
+    const rho=num(tr.querySelector('.inpRho')?.value, tstate.rows[i]?.rho||1) || 1;
+    lastRho=rho;
+    const put=Math.min(cap, rest);
+    tr.querySelector('.inpL').value = put>0? String(Number(put.toFixed(2))):'0';
+    rest-=put;
+    if(rest<=0){ rest=0; break; }
+  }
+  const overflowLiters=Math.max(0, rest);
+  let overflowTons=0;
+  if(overflowLiters>0 && lastRho>0) overflowTons=(overflowLiters*lastRho)/1000;
+  tstate.lastDistribution={ liters: overflowLiters, tons: overflowTons, m3: overflowLiters/1000 };
+  recalc();
+}
+
+function distributeByMassKg(totalKg){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  let restKg=Math.max(0, num(totalKg,0));
+  const tstate=app.trailerState;
+  const rowsEl=$('tankBody')? [...$('tankBody').querySelectorAll('tr')]:[];
+  rowsEl.forEach(tr=>{ const inp=tr.querySelector('.inpL'); if(inp) inp.value='0'; });
+  const same=$('chkAllSame')?.checked || tstate.sameCargo;
+  const firstRho=num(rowsEl[0]?.querySelector('.inpRho')?.value, tstate.rows[0]?.rho||1) || 1;
+  let lastRhoUsed=firstRho;
+  for(let i=0;i<tstate.caps.length;i++){
+    const cap=tstate.caps[i]||0;
+    const tr=rowsEl[i];
+    if(!tr) continue;
+    let rho=same ? firstRho : num(tr.querySelector('.inpRho')?.value, tstate.rows[i]?.rho||1);
+    if(!isFinite(rho) || rho<=0) rho=1;
+    lastRhoUsed=rho;
+    const litersByMass=restKg/rho;
+    const putL=Math.min(cap, litersByMass);
+    tr.querySelector('.inpL').value = putL>0? String(Number(putL.toFixed(2))):'0';
+    restKg-=putL*rho;
+    if(restKg<=0){ restKg=0; break; }
+  }
+  restKg=Math.max(0, restKg);
+  const overflowLiters=lastRhoUsed>0? restKg/lastRhoUsed:0;
+  const overflowTons=restKg/1000;
+  tstate.lastDistribution={ liters: overflowLiters, tons: overflowTons, m3: overflowLiters/1000 };
+  recalc();
+}
+
+function applyBulkValue(rawInput, fallbackUnit){
+  const parsed=parseBulkValue(rawInput, fallbackUnit);
+  if(!parsed || parsed.value<=0) return false;
+  if(parsed.unit==='l') distributeByLiters(parsed.value);
+  else if(parsed.unit==='m3') distributeByLiters(parsed.value*1000);
+  else if(parsed.unit==='kg') distributeByMassKg(parsed.value);
+  else if(parsed.unit==='t') distributeByMassKg(parsed.value*1000);
+  else return false;
+  return true;
+}
+
+function fillAllByMax(){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  const tstate=app.trailerState;
+  const rowsEl=$('tankBody')? [...$('tankBody').querySelectorAll('tr')]:[];
+  tstate.lastDistribution=null;
+  rowsEl.forEach((tr,i)=>{ const cap=tstate.caps[i]||0; const inp=tr.querySelector('.inpL'); if(inp) inp.value=cap>0? String(cap):'0'; });
+  recalc();
+}
+
+function clearAllCompartments(){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  const rowsEl=$('tankBody')? [...$('tankBody').querySelectorAll('tr')]:[];
+  app.trailerState.lastDistribution=null;
+  rowsEl.forEach(tr=>{ const inp=tr.querySelector('.inpL'); if(inp) inp.value='0'; });
+  recalc();
 }
 
 // ===== Boot =====
@@ -721,9 +910,24 @@ function boot(){
   if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // страховка
 
   if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; app.tractorAxles=2; }
-  renderTrailerSelect(app.selectedTrailerId); 
-  selectTrailer(app.selectedTrailerId); 
+  renderTrailerSelect(app.selectedTrailerId);
+  selectTrailer(app.selectedTrailerId);
   bind();
+  const bulkBtn=$('bulkApply');
+  if(bulkBtn) bulkBtn.addEventListener('click', ()=>{
+    const fallback=$('bulkUnit')?.value || 't';
+    const raw=$('bulkValue')?.value || '';
+    if(!applyBulkValue(raw, fallback)){
+      alert('Укажите количество (>0)');
+      return;
+    }
+  });
+  const fillBtn=$('fillMax');
+  if(fillBtn) fillBtn.addEventListener('click', (e)=>{ e?.preventDefault?.(); fillAllByMax(); });
+  const clearBtn=$('clearAll');
+  if(clearBtn) clearBtn.addEventListener('click', (e)=>{ e?.preventDefault?.(); clearAllCompartments(); });
+
+  const tbtn = $('runTests'); if (tbtn) tbtn.addEventListener('click', runTests);
   maybeInitMaps();
 }
-window.addEventListener('load', boot);
+boot();
