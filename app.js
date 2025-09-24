@@ -644,6 +644,69 @@ function runTests(){
     if($('ratePerKm')) $('ratePerKm').value='50';
     if($('trips')) $('trips').value='2'; 
     recalc();
+    // ===== Распределение общего груза по отсекам =====
+function distributeByVolumeLiters(totalLiters){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  totalLiters = Math.max(0, num(totalLiters, 0));
+  const tstate = app.trailerState;
+  const rowsEl = $('tankBody') ? [...$('tankBody').querySelectorAll('tr')] : [];
+  const same = $('chkAllSame')?.checked;
+
+  // пробежимся по отсекам и льём по капам
+  let restL = totalLiters;
+  for(let i=0;i<tstate.caps.length;i++){
+    const cap = tstate.caps[i] || 0;
+    const tr  = rowsEl[i];
+    if(!tr) continue;
+
+    // сколько льём
+    const putL = Math.min(restL, cap);
+    tr.querySelector('.inpL').value = putL.toFixed(0);
+    tr.querySelector('.inpKg').value = ''; // пересчёт по ρ сделает recalc()
+    restL -= putL;
+    if(restL<=0) break;
+  }
+  // если объёма больше, чем суммарные капы — остаток «не влезло» покажет сводка
+  recalc();
+}
+
+function distributeByMassKg(totalKg){
+  if(!app.trailerState || app.trailerState.type!=='tanker') return;
+  totalKg = Math.max(0, num(totalKg, 0));
+  const tstate = app.trailerState;
+  const rowsEl = $('tankBody') ? [...$('tankBody').querySelectorAll('tr')] : [];
+  const same = $('chkAllSame')?.checked;
+
+  let restKg = totalKg;
+
+  for(let i=0;i<tstate.caps.length;i++){
+    const capL = tstate.caps[i] || 0;
+    const tr   = rowsEl[i];
+    if(!tr) continue;
+
+    // ρ: если все отсеки — один груз, берём из первой строки, иначе берём ρ каждой строки
+    let rho;
+    if(same){
+      const tr0 = rowsEl[0];
+      rho = num(tr0.querySelector('.inpRho').value, 1);
+    }else{
+      rho = num(tr.querySelector('.inpRho').value, 1);
+    }
+    if(rho <= 0) rho = 1;
+
+    // сколько литров можно налить в этот отсек по массе, но не больше его капа
+    const litersAvailableByMass = restKg / rho;
+    const putL = Math.min(capL, litersAvailableByMass);
+
+    tr.querySelector('.inpL').value = putL.toFixed(0);
+    tr.querySelector('.inpKg').value = ''; // recalc() сам пересчитает из литров и ρ
+    restKg -= putL * rho;
+
+    if(restKg <= 0) break;
+  }
+  recalc();
+}
+
     const costText=$('kpiCost')?.textContent?.replace(/\D+/g,''); if(parseInt(costText)===10000) pass('Стоимость вручную считается'); else fail('Стоимость вручную', $('kpiCost')?.textContent||'');
 
     $('recalcAxles')?.click();
@@ -663,6 +726,23 @@ function boot(){
   renderTrailerSelect(app.selectedTrailerId); 
   selectTrailer(app.selectedTrailerId); 
   bind();
+  // распределение по инпутам
+$('btnDistributeMass').addEventListener('click', ()=>{
+  const t = num($('totalMassT').value, NaN);
+  if(!isFinite(t) || t <= 0){ alert('Укажи массу в тоннах (>0)'); return; }
+  distributeByMassKg(t*1000);
+});
+$('btnDistributeM3').addEventListener('click', ()=>{
+  const m3 = num($('totalVolM3').value, NaN);
+  if(!isFinite(m3) || m3 <= 0){ alert('Укажи объём в м³ (>0)'); return; }
+  distributeByVolumeLiters(m3*1000);
+});
+$('btnDistributeL').addEventListener('click', ()=>{
+  const L = num($('totalVolL').value, NaN);
+  if(!isFinite(L) || L <= 0){ alert('Укажи объём в литрах (>0)'); return; }
+  distributeByVolumeLiters(L);
+});
+
   const tbtn = $('runTests'); if (tbtn) tbtn.addEventListener('click', runTests);
   maybeInitMaps();
 }
