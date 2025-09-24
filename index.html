@@ -167,6 +167,33 @@
           <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
             <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
             <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+            <!-- ==== Bulk distribute panel ==== -->
+<div class="row cols-3" style="margin:6px 0 10px">
+  <div>
+    <label>Сколько везём (масса), т</label>
+    <div style="display:flex;gap:8px">
+      <input id="totalMassT" type="number" placeholder="например 12">
+      <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
+    </div>
+    <div class="small">При включённой галке «все отсеки — один груз» берём плотность из #1. Иначе — берём плотность каждого отсека по его типу.</div>
+  </div>
+  <div>
+    <label>Сколько везём (объём), м³</label>
+    <div style="display:flex;gap:8px">
+      <input id="totalVolM3" type="number" placeholder="например 28.5">
+      <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
+    </div>
+  </div>
+  <div>
+    <label>…или объём, л</label>
+    <div style="display:flex;gap:8px">
+      <input id="totalVolL" type="number" placeholder="например 28500">
+      <button class="btn" id="btnDistributeL" style="white-space:nowrap">Распределить по литрам</button>
+    </div>
+  </div>
+</div>
+<!-- ==== /Bulk distribute panel ==== -->
+
           </div>
 
           <table>
