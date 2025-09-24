@@ -1,77 +1,233 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Vigard Bulk Calc</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Вигард — калькулятор наливных грузов</title>
+  <link rel="icon" href="data:,V" />
   <style>
-    body { font-family: sans-serif; padding: 1rem; background:#f9fafb; }
-    h1 { font-size: 20px; margin-bottom:1rem; }
-    label { display:block; margin:0.5rem 0 0.2rem; font-weight:600; }
-    select, input { padding:0.4rem; width:100%; max-width:320px; margin-bottom:0.5rem; }
-    textarea { width:100%; height:140px; }
-    table { border-collapse: collapse; margin-top:1rem; width:100%; max-width:700px; }
-    td, th { border:1px solid #ddd; padding:6px; font-size:14px; }
-    .pill { background:#e5e7eb; border-radius:8px; padding:2px 6px; font-size:12px; }
-    .warn { color:#dc2626; }
-    #gmapsRow { grid-template-columns:1fr 1fr; gap:1rem; margin:1rem 0; }
-    #gmapsRow input { width:100%; }
-    /* серые подсказки */
-    input::placeholder { color:#9ca3af; opacity:1; }
+    :root{--bg:#f7f7f8;--card:#ffffff;--text:#111827;--muted:#6b7280;--accent:#0ea5e9;--good:#16a34a;--bad:#dc2626;--warn:#ca8a04;--border:#e5e7eb}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    .title{display:flex;gap:12px;align-items:center;margin:8px 0 16px}
+    .title h1{font-size:22px;margin:0}
+    .muted{color:var(--muted);font-size:14px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.04)}
+    .card .c{padding:16px}
+    label{display:block;font-size:13px;color:#374151;margin:6px 0}
+    input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none}
+    input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+    .row{display:grid;gap:12px}
+    @media(min-width:720px){.row.cols-2{grid-template-columns:1fr 1fr} .row.cols-3{grid-template-columns:1fr 1fr 1fr} .row.cols-4{grid-template-columns:repeat(4,1fr)}}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;height:42px}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .small{font-size:12px;color:#6b7280}
+    .kpi{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    .kpi .box{border:1px solid var(--border);border-radius:12px;padding:12px}
+    .kpi .t{color:var(--muted);font-size:12px}
+    .kpi .v{font-weight:600;font-size:18px}
+    .banner{border:1px dashed #facc15;background:#fffbeb;padding:12px;border-radius:12px}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{font-size:14px}
+    th{color:#374151;text-align:left}
+    td>input,td>select{width:100%}
+    .cap{font-size:12px;color:#6b7280}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#eef6ff;color:#0b6aa8;font-size:12px}
+    .warn{color:#b45309}
+    .danger{color:#b91c1c}
+    details.tests{margin-top:12px}
+    details.tests summary{cursor:pointer}
+    .pass{color:#16a34a}
+    .fail{color:#dc2626}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px}
+    .modal.open{display:flex}
+    .modal>.sheet{background:#fff;border-radius:16px;padding:16px;max-width:640px;width:100%;border:1px solid var(--border)}
+    @media(min-width:980px){
+      .row.cols-3:has(#tractorAxles){ grid-template-columns: 1fr 1fr 1fr auto; }
+      .row.cols-3:has(#tractorAxles) .btns{ justify-content:flex-end; }
+    }
   </style>
 </head>
 <body>
-  <h1>Калькулятор Vigard Bulk</h1>
-
-  <label for="tractorSelect">Тягач</label>
-  <select id="tractorSelect"></select>
-  <label for="tractorAxles">Оси тягача</label>
-  <input id="tractorAxles" type="number" value="2">
-
-  <label for="trailerSelect">Прицеп</label>
-  <select id="trailerSelect"></select>
-  <div id="trailerInfo"></div>
-
-  <h2>Маршрут и стоимость</h2>
-  <label for="provider">Провайдер маршрута</label>
-  <select id="provider">
-    <option value="google">Google</option>
-    <option value="yandex">Yandex</option>
-  </select>
-
-  <label for="distanceMode">Режим расстояния</label>
-  <select id="distanceMode">
-    <option value="manual">Вручную</option>
-    <option value="gmaps">Через карты</option>
-  </select>
-
-  <div id="gmapsRow" style="display:none;">
-    <div>
-      <label for="routeFrom">Откуда (город)</label>
-      <input id="routeFrom" placeholder="Введите название" autocomplete="off">
+  <div class="wrap">
+    <div class="title">
+      <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0369a1">V</div>
+      <div>
+        <h1>Вигард — калькулятор наливных грузов</h1>
+        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем. <b>Спирт</b> временно не оформляем (расчёт доступен).</div>
+      </div>
     </div>
-    <div>
-      <label for="routeTo">Куда (город)</label>
-      <input id="routeTo" placeholder="Введите название" autocomplete="off">
+
+    <div class="card"><div class="c">
+      <h2 style="margin:0 0 12px">Конфигурация</h2>
+      <div class="row cols-3">
+        <div>
+          <label>Тягач (оси)</label>
+          <select id="tractorAxles"><option value="2">2</option><option value="3">3</option></select>
+        </div>
+        <div>
+          <label>Тягач (госномер)</label>
+          <select id="tractorSelect"></select>
+        </div>
+        <div>
+          <label>Прицеп (номер)</label>
+          <select id="trailerSelect"></select>
+        </div>
+        <div class="btns" style="align-items:end">
+          <button class="btn" id="addTruck">Добавить тягач</button>
+          <button class="btn" id="resetPreset">Сбросить к пресету</button>
+          <button class="btn" id="addTrailer">Добавить прицеп</button>
+        </div>
+      </div>
+      <div id="trailerInfo" class="small" style="margin-top:6px"></div>
+    </div></div>
+
+    <!-- Маршрут и стоимость -->
+    <div class="card"><div class="c">
+      <h2 style="margin:0 0 12px">Маршрут и стоимость</h2>
+      <div class="row cols-4">
+        <div>
+          <label>Провайдер маршрута</label>
+          <select id="provider"><option value="google" selected>Google</option><option value="yandex">Яндекс</option></select>
+        </div>
+        <div>
+          <label>Режим расстояния</label>
+          <select id="distanceMode">
+            <option value="manual" selected>Вручную</option>
+            <option value="maps">Через карты</option>
+          </select>
+        </div>
+        <div>
+          <label>Расстояние, км (если вручную)</label>
+          <input id="distanceKm" type="number" placeholder="350">
+        </div>
+        <div>
+          <label>Ставка, ₽/км</label>
+          <input id="ratePerKm" type="number" placeholder="120">
+        </div>
+      </div>
+      <div class="row cols-3" id="mapsRow" style="display:none">
+        <div>
+          <label>Откуда (город)</label>
+          <input id="routeFrom" placeholder="например: Кропоткин" value="">
+        </div>
+        <div>
+          <label>Куда (город)</label>
+          <input id="routeTo" placeholder="например: Краснодар" value="">
+        </div>
+        <div style="align-self:end" class="btns">
+          <input id="mapsKey" placeholder="API key (Google или Яндекс)" class="small" style="width:56%">
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="truckMode" type="checkbox"> грузовой маршрут</label>
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
+          <button class="btn" id="btnRoute">Получить расстояние</button>
+        </div>
+      </div>
+      <div class="small" id="mapsNote" style="display:none;margin-top:6px">
+        Google: грузовые ограничения учитываются не полностью (ставим поправку при «грузовой маршрут»). Яндекс: строим через JS-API; строгий truck-routing через HTTP API недоступен из браузера — применяем поправку.
+      </div>
+      <div class="kpi" style="margin-top:12px">
+        <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
+        <div class="box"><div class="t">Ставка</div><div class="v" id="kpiRate">—</div></div>
+        <div class="box"><div class="t">Рейсов</div><div class="v" id="kpiTrips">—</div></div>
+        <div class="box"><div class="t">Итого стоимость</div><div class="v" id="kpiCost">—</div></div>
+      </div>
+      <div class="row cols-3" style="margin-top:8px">
+        <div>
+          <label>Количество рейсов</label>
+          <input id="trips" type="number" value="1">
+        </div>
+      </div>
+    </div></div>
+
+    <div class="grid" style="margin-top:16px">
+      <div class="card"><div class="c">
+        <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
+        <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
+        <div class="small" style="margin:6px 0; display:flex; gap:12px; align-items:center">
+          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="chkAllSame"> Все отсеки — как #1</label>
+          <button class="btn" id="btnAddProduct">Добавить продукт</button>
+        </div>
+        <div id="tankSection">
+          <table>
+            <thead>
+              <tr>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th><th>Т (т)</th><th>Объем, м³</th>
+              </tr>
+            </thead>
+            <tbody id="tankBody"></tbody>
+          </table>
+          <div class="small">Лимиты по отсекам: <span id="capsLine"></span></div>
+          <div id="fitSummary" class="small" style="margin-top:6px"></div>
+          <div class="btns" style="margin-top:8px">
+            <button class="btn" id="addCompartment">+ Отсек</button>
+            <button class="btn" id="removeCompartment">− Отсек</button>
+          </div>
+        </div>
+        <div id="platformSection" style="display:none">
+          <table>
+            <thead><tr><th>Позиция</th><th>Масса, кг</th></tr></thead>
+            <tbody id="platBody"></tbody>
+          </table>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="c">
+        <h3 style="margin:0 0 8px">Итоги и предупреждения</h3>
+        <div class="kpi">
+          <div class="box"><div class="t">Сумма литров</div><div class="v" id="sumL">—</div></div>
+          <div class="box"><div class="t">Сумма массы</div><div class="v" id="sumKg">—</div></div>
+        </div>
+        <ul id="warnList" class="small" style="margin-top:8px"></ul>
+        <div style="margin-top:16px">
+          <div style="font-weight:600;margin-bottom:6px">Мини-бриф</div>
+          <textarea id="brief" rows="8" readonly></textarea>
+        </div>
+        <div class="btns" style="margin-top:8px">
+          <button class="btn" id="copyBrief">Скопировать мини-бриф</button>
+          <button class="btn primary" id="submitBtn">Оформить / Сохранить расчёт</button>
+        </div>
+        <details class="tests"><summary>Тесты (debug)</summary>
+          <div class="btns" style="margin:8px 0"><button class="btn" id="runTests">Запустить тесты</button></div>
+          <div id="testResults" class="small"></div>
+        </details>
+      </div></div>
     </div>
   </div>
 
-  <label for="distanceKm">Расстояние, км (если вручную)</label>
-  <input id="distanceKm" type="number">
+  <!-- Modal: add trailer -->
+  <div id="modal" class="modal"><div class="sheet">
+    <h3 style="margin-top:0">Добавить прицеп</h3>
+    <div class="row cols-2">
+      <div><label>Номер (как в списке)</label><input id="m_name" placeholder="МК 9999 23"></div>
+      <div><label>Тип</label><select id="m_type"><option value="tanker">Цистерна</option><option value="platform">Площадка</option></select></div>
+    </div>
+    <div class="row cols-3">
+      <div><label>Оси</label><select id="m_axles"><option>3</option><option selected>4</option></select></div>
+      <div><label>Тара, кг</label><input id="m_tare" type="number" placeholder="7800"></div>
+      <div id="m_positions_wrap" style="display:none"><label>Позиции (для площадки)</label><input id="m_positions" type="number" value="4"></div>
+    </div>
+    <div id="m_caps_wrap"><label>Отсеки (литры) через «/»</label><input id="m_caps" placeholder="10000/8000/9000"></div>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn primary" id="m_save">Сохранить</button>
+      <button class="btn" id="m_cancel">Отмена</button>
+    </div>
+  </div></div>
 
-  <label for="ratePerKm">Ставка, ₽/км</label>
-  <input id="ratePerKm" type="number">
-
-  <label for="trips">Количество рейсов</label>
-  <input id="trips" type="number" value="1">
-
-  <h2>Итоги</h2>
-  <div>Расстояние: <span id="kpiDistance">—</span></div>
-  <div>Ставка: <span id="kpiRate">—</span></div>
-  <div>Рейсов: <span id="kpiTrips">—</span></div>
-  <div>Итого стоимость: <span id="kpiCost">—</span></div>
-
-  <h2>Резюме</h2>
-  <textarea id="brief" readonly></textarea>
+  <!-- Modal: add truck -->
+  <div id="modalTruck" class="modal"><div class="sheet">
+    <h3 style="margin-top:0">Добавить тягач</h3>
+    <div class="row cols-2">
+      <div><label>Госномер</label><input id="mt_plate" placeholder="А 123 БВ 93"></div>
+      <div><label>Оси</label><select id="mt_axles"><option value="2" selected>2</option><option value="3">3</option></select></div>
+    </div>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn primary" id="mt_save">Сохранить</button>
+      <button class="btn" id="mt_cancel">Отмена</button>
+    </div>
+  </div></div>
 
   <script src="app.js"></script>
 </body>
