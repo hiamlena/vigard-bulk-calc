@@ -14,7 +14,7 @@ const BASE_PRODUCTS = [
   { key: "syrup", label: "Сироп сахарный", rho: 1.30, adr: "—" },
   { key: "wine", label: "Вино", rho: 0.99, adr: "—" },
 
-  { key: "ethanol96", label: "Спирт этиловый (96%)", rho: 0.789, adr: "3" }, // расчёт есть, оформление блокируется
+  { key: "ethanol96", label: "Спирт этиловый (96%)", rho: 0.789, adr: "3" },
 
   { key: "methanol", label: "Метанол", rho: 0.792, adr: "3" },
   { key: "vinyl_acetate", label: "Винилацетат мономер (VAM)", rho: 0.934, adr: "3" },
@@ -64,7 +64,7 @@ const BASE_TRAILERS = [
   { id: "EU5123_23", name: "ЕУ 5123 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11000, 7500, 10000] },
   { id: "MK5737_23", name: "МК 5737 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [30000] },
   { id: "ET0683_23", name: "ЕТ 0683 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [22000] },
-  { id: "MO0882_23", name: "МО 0882 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [10365, 6925, 10450] }, // пресет фикс
+  { id: "MO0882_23", name: "МО 0882 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [10365, 6925, 10450] },
   { id: "MA2562_23", name: "МА 2562 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 9000] },
   { id: "MU5054_23", name: "МУ 5054 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11422, 4556, 12653] },
   { id: "MK5702_23", name: "МК 5702 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9750, 7500, 7500, 7500] },
@@ -82,7 +82,7 @@ const LS_KEYS = {
   state:  'vigard_state_v4'
 };
 
-// Products helpers
+// === Products
 function getAllProducts(){
   const custom = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]');
   return [...BASE_PRODUCTS, ...custom];
@@ -94,7 +94,7 @@ function addCustomProduct(label, rho, adr){
   localStorage.setItem(LS_KEYS.products, JSON.stringify(list));
 }
 
-// Trucks helpers
+// === Trucks
 function getAllTrucks(){
   const custom = JSON.parse(localStorage.getItem(LS_KEYS.trucks)||'[]');
   return [...BASE_TRUCKS, ...custom];
@@ -108,10 +108,9 @@ function setTruckAxles(plate, axles){
   map[plate]=axles; localStorage.setItem(LS_KEYS.truckAxlesMap, JSON.stringify(map));
 }
 
-// Trailers helpers
+// === Trailers
 function getAllTrailers(){
   const custom = JSON.parse(localStorage.getItem(LS_KEYS.custom)||'[]');
-  // если кастом совпадёт по id — базовый останется первым (find вернёт базовый)
   return [...BASE_TRAILERS, ...custom];
 }
 function renderTrailerSelect(selectedId){
@@ -129,7 +128,7 @@ function setTrailerInfo(t){
   else info.innerHTML=`Тип: площадка · Оси: ${t.axles} · Тара: ${t.tareKg||'—'} кг · Позиции: ${t.positions||4}`;
 }
 
-// Tanker table
+// === Tanker table
 function densityOptionsHtml(selectedKey){
   return getAllProducts().map(d=>`<option value="${d.key}" ${d.key===selectedKey?'selected':''}>${d.label}</option>`).join('');
 }
@@ -159,7 +158,7 @@ function tankerFromPreset(compartments){
   return { caps:[...compartments], rows: compartments.map(()=>({typeKey:'diesel', adr:'3', rho:0.84, liters:0, kg:0})) };
 }
 
-// Platform table
+// === Platform table
 function buildPlatRows(state){
   const tb=$('platBody'); tb.innerHTML='';
   const n=state.positions||4; for(let i=0;i<n;i++){
@@ -199,7 +198,9 @@ function renderCurrent(){
   setTrailerInfo(t);
   renderTrailerSelect(app.selectedTrailerId);
   renderTractorSelect(app.tractorPlate);
+  if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
   const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; $('tractorAxles').value=String(app.tractorAxles||2);
+  $('tractorSelect').value=app.tractorPlate;
 
   $('provider').value=app.provider||'google';
   $('distanceMode').value=app.distanceMode||'manual';
@@ -221,12 +222,17 @@ function recalc(){
 
   if(tstate.type==='tanker'){
     const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
-    let ethanolDetected=false;
     rows.forEach((tr,i)=>{
       const typeKey=tr.querySelector('.selType').value;
       const dict=getAllProducts().find(d=>d.key===typeKey) || getAllProducts()[0];
-      const rho=num(tr.querySelector('.inpRho').value, dict.rho);
-      const adr=tr.querySelector('.selAdr').value;
+      // авто-подстановка ADR и ρ
+      const rhoInp=tr.querySelector('.inpRho');
+      if(!rhoInp.value) rhoInp.value = dict.rho;
+      const adrSel=tr.querySelector('.selAdr');
+      if(adrSel && adrSel.value==='Не знаю'){ const opt=[...adrSel.options].find(o=>o.value===String(dict.adr)); if(opt) adrSel.value=opt.value; }
+
+      const rho=num(rhoInp.value, dict.rho);
+      const adr=adrSel.value;
       let liters=num(tr.querySelector('.inpL').value, NaN);
       let kg=num(tr.querySelector('.inpKg').value, NaN);
 
@@ -239,19 +245,15 @@ function recalc(){
 
       tr.querySelector('.inpL').value = liters || 0; tr.querySelector('.inpKg').value = kg || 0;
       const tVal = kg/1000, m3 = liters/1000;
-      const tInp = tr.querySelector('.inpT'), m3Inp = tr.querySelector('.inpM3');
-      if(tInp) tInp.value = isFinite(tVal)? tVal.toFixed(3) : 0;
-      if(m3Inp) m3Inp.value = isFinite(m3)? m3.toFixed(3) : 0;
+      tr.querySelector('.inpT').value = isFinite(tVal)? tVal.toFixed(3) : 0;
+      tr.querySelector('.inpM3').value = isFinite(m3)? m3.toFixed(3) : 0;
 
       tstate.rows[i]={typeKey, adr, rho, liters, kg, t:tVal, m3};
 
       sumL+=liters; sumKg+=kg;
-      if(typeKey==='ethanol96' && liters>0) ethanolDetected=true;
     });
-    $('ethanolBanner').style.display = ethanolDetected? 'block':'none';
-    const btn=$('submitBtn'); if(btn) btn.disabled = !!ethanolDetected;
 
-    // Fit summary
+    // Итог по влезанию
     const parts=(tstate.caps||[]).map((capL,i)=>{ const r=tstate.rows[i]; const maxKg=capL*(r.rho||1); const maxT=maxKg/1000; return `#${i+1}: ${capL} л (≈ ${Math.round(maxKg)} кг, ${maxT.toFixed(2)} т)`; });
     $('capsLine').textContent = parts.join(', ');
     let fitL=0, fitKg=0, reqL=0, leftL=0, leftKg=0;
@@ -279,11 +281,10 @@ function recalc(){
   $('kpiTrips').textContent = String(app.trips);
   $('kpiCost').textContent = (isFinite(cost)&&cost>0)? cost.toLocaleString('ru-RU')+' ₽' : '—';
 
-  // brief
   const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
   let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, `Итоги: ${(isNaN(sumL)?'-':Math.round(sumL)+' л')}, ${(sumKg/1000).toFixed(2)} т`];
   if(tstate.type==='tanker'){
-    tstate.rows.forEach((r,i)=>{ const d=getAllProducts().find(x=>x.key===r.typeKey); lines.push(`#${i+1}: ${(d?.label)||r.typeKey}, ρ=${r.rho}, ${Math.round(r.liters)} л / ${Math.round(r.kg)} кг / ${(r.kg/1000).toFixed(3)} т / ${(r.liters/1000).toFixed(3)} м³`); });
+    tstate.rows.forEach((r,i)=>{ const d=getAllProducts().find(x=>x.key===r.typeKey); lines.push(`#${i+1}: ${(d?.label)||r.typeKey}, ADR ${r.adr}, ρ=${r.rho}, ${Math.round(r.liters)} л / ${Math.round(r.kg)} кг / ${(r.kg/1000).toFixed(3)} т / ${(r.liters/1000).toFixed(3)} м³`); });
   } else {
     (tstate.masses||[]).forEach((kg,i)=>{ lines.push(`#${i+1}: ${Math.round(kg)} кг`); });
   }
@@ -297,23 +298,19 @@ function recalc(){
 
 // ===== Events =====
 function bind(){
-  // selects
   $('trailerSelect').addEventListener('change', e=>selectTrailer(e.target.value));
   $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; $('tractorAxles').value=String(ax); saveState(); recalc(); });
   $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
-  $('provider').addEventListener('change', e=>{ app.provider=e.target.value; saveState(); });
-  $('distanceMode').addEventListener('change', e=>{ app.distanceMode=e.target.value; $('mapsRow').style.display=(app.distanceMode==='maps')?'grid':'none'; $('mapsNote').style.display=(app.distanceMode==='maps')?'block':'none'; saveState(); });
+  $('provider').addEventListener('change', e=>{ app.provider=e.target.value; saveState(); maybeInitMaps(); });
+  $('distanceMode').addEventListener('change', e=>{ app.distanceMode=e.target.value; $('mapsRow').style.display=(app.distanceMode==='maps')?'grid':'none'; $('mapsNote').style.display=(app.distanceMode==='maps')?'block':'none'; saveState(); maybeInitMaps(); });
 
-  // buttons
   $('resetPreset').addEventListener('click', ()=>selectTrailer(app.selectedTrailerId));
   $('copyBrief').addEventListener('click', ()=>navigator.clipboard.writeText($('brief').value));
   $('addTrailer').addEventListener('click', openModal);
   $('addTruck').addEventListener('click', openTruckModal);
 
-  // inputs
   ['distanceKm','ratePerKm','trips','routeFrom','routeTo'].forEach(id=>{ $(id).addEventListener('input', ()=>{ app.distanceKm=num($('distanceKm').value,0); app.ratePerKm=num($('ratePerKm').value,0); app.trips=parseInt($('trips').value)||1; app.routeFrom=$('routeFrom').value; app.routeTo=$('routeTo').value; saveState(); recalc(); }); });
 
-  // tank/plat tables
   ['tankBody','platBody'].forEach(id=>{ $(id).addEventListener('input', recalc); });
   $('tankBody').addEventListener('change', (e)=>{
     const tr = e.target.closest('tr');
@@ -331,7 +328,6 @@ function bind(){
     }
   });
 
-  // all same checkbox
   $('chkAllSame').addEventListener('change', (e)=>{
     if(!e.target.checked) return;
     const tb=$('tankBody'); const first=tb.querySelector('tr'); if(!first) return;
@@ -343,16 +339,13 @@ function bind(){
     recalc();
   });
 
-  // modal trailer
   $('m_type').addEventListener('change', e=>{ const isPlat=e.target.value==='platform'; $('m_positions_wrap').style.display=isPlat?'block':'none'; $('m_caps_wrap').style.display=isPlat?'none':'block'; });
   $('m_cancel').addEventListener('click', closeModal);
   $('m_save').addEventListener('click', saveModalTrailer);
 
-  // modal truck
   $('mt_cancel').addEventListener('click', closeTruckModal);
   $('mt_save').addEventListener('click', saveTruck);
 
-  // add product button
   $('btnAddProduct').addEventListener('click', ()=>{
     const label = prompt('Название продукта:'); if(!label) return;
     const rho = parseFloat(prompt('Плотность ρ, кг/л:','1.00')); if(!Number.isFinite(rho)||rho<=0){ alert('Некорректная плотность'); return; }
@@ -361,11 +354,11 @@ function bind(){
     renderCurrent();
   });
 
-  // maps
   $('btnRoute').addEventListener('click', buildRoute);
+  $('mapsKey').addEventListener('input', ()=>maybeInitMaps());
 }
 
-// ===== Modal logic (trailers) =====
+// ===== Modal logic (trailers)
 function openModal(){ $('modal').classList.add('open'); }
 function closeModal(){ $('modal').classList.remove('open'); }
 function genId(name){ return name.replace(/\s+/g,'_'); }
@@ -381,13 +374,12 @@ function saveModalTrailer(){
     obj={ id: genId(name), name, type, axles, tareKg: tare, compartmentsLiters: caps };
   }
   const custom=JSON.parse(localStorage.getItem(LS_KEYS.custom)||'[]');
-  // не позволяем дублировать id существующего базового — меняем id кастома
   if(BASE_TRAILERS.find(x=>x.id===obj.id)){ obj.id = obj.id+'_custom'; }
   custom.push(obj); localStorage.setItem(LS_KEYS.custom, JSON.stringify(custom));
   renderTrailerSelect(app.selectedTrailerId); closeModal();
 }
 
-// ===== Modal logic (trucks) =====
+// ===== Modal logic (trucks)
 function openTruckModal(){ $('modalTruck').classList.add('open'); }
 function closeTruckModal(){ $('modalTruck').classList.remove('open'); }
 function saveTruck(){
@@ -395,7 +387,7 @@ function saveTruck(){
   const axles=parseInt($('mt_axles').value)||2;
   const list = JSON.parse(localStorage.getItem(LS_KEYS.trucks)||'[]');
   if(!list.includes(plate)) list.push(plate);
-  localStorage.setItem(LS_KEYS.trucks', JSON.stringify(list)); // fix quote
+  localStorage.setItem(LS_KEYS.trucks, JSON.stringify(list)); // <-- ИСПРАВЛЕНО (не было лишней кавычки)
   setTruckAxles(plate, axles);
   renderTractorSelect(plate);
   $('tractorSelect').value=plate;
@@ -404,7 +396,7 @@ function saveTruck(){
   closeTruckModal();
 }
 
-// ===== Axle calc =====
+// ===== Axle calc
 function syncAxleParamsFromTrailer(){
   const t = getAllTrailers().find(x=>x.id===app.selectedTrailerId);
   if(!t) return;
@@ -442,13 +434,13 @@ function calcAxles(){
   $('AxTl_ax').textContent=`${Math.round(Rb_sum).toLocaleString('ru-RU')} кг (≈ ${Math.round(perTrailerAxle).toLocaleString('ru-RU')} кг × ${axTl})`;
   const warn=[]; if(Ax1>7500) warn.push('Передняя ось > 7.5 т'); if(axTr===2 && Ax2_group>11500) warn.push('Задняя ось тягача > 11.5 т'); if(axTr===3 && perTractorRear>11500) warn.push('Ось задней группы тягача > 11.5 т'); if(perTrailerAxle>10000) warn.push('Ось тележки прицепа > 10 т'); const w=$('axWarn_ax'); if(warn.length){ w.style.display='block'; w.textContent='Проверь нормативы: '+warn.join('; ');} else { w.style.display='none'; }
 }
-(function(){ $('recalcAxles').addEventListener('click', calcAxles); ['LT_ax','l2_ax','NT10_ax','NT20_ax','mp_ax','LA_ax','LB_ax','LC_ax','NTpp_ax','axTr_axle'].forEach(id=>{ $(id).addEventListener('input', calcAxles); }); })();
+(function(){ const ids=['LT_ax','l2_ax','NT10_ax','NT20_ax','mp_ax','LA_ax','LB_ax','LC_ax','NTpp_ax','axTr_axle']; ids.forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', calcAxles); }); const btn=$('recalcAxles'); if(btn) btn.addEventListener('click', calcAxles); })();
 const _recalc_orig=recalc; recalc=function(){ _recalc_orig(); calcAxles(); };
 const _selectTrailer_orig=selectTrailer; selectTrailer=function(id){ _selectTrailer_orig(id); syncAxleParamsFromTrailer(); calcAxles(); };
 window.addEventListener('load', ()=>{ syncAxleParamsFromTrailer(); calcAxles(); });
 
 // ===== Maps (Google / Yandex) =====
-let _gmapsLoading=false, _gmapsLoaded=false, _ymapsLoading=false, _ymapsLoaded=false, _acFrom=null, _acTo=null, _fromPlaceId=null, _toPlaceId=null;
+let _gmapsLoading=false, _gmapsLoaded=false, _ymapsLoading=false, _ymapsLoaded=false, _acFrom=null, _acTo=null, _fromPlaceId=null, _toPlaceId=null, _yaSuggestFrom=null, _yaSuggestTo=null;
 function loadGoogleMaps(key){
   return new Promise((resolve,reject)=>{
     if(_gmapsLoaded){ resolve(); return; }
@@ -457,14 +449,14 @@ function loadGoogleMaps(key){
     _gmapsLoading=true; const s=document.createElement('script'); s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`; s.async=true; s.defer=true; s.onload=()=>{ _gmapsLoaded=true; resolve(); }; s.onerror=()=>{ _gmapsLoading=false; reject(new Error('Не удалось загрузить Google Maps JS API')); }; document.head.appendChild(s);
   });
 }
-function ensureAutocomplete(){
+function ensureAutocompleteGoogle(){
   if(!_gmapsLoaded) return;
   if(!_acFrom){ _acFrom=new google.maps.places.Autocomplete($('routeFrom'), { types:['(cities)'] }); _acFrom.addListener('place_changed', ()=>{ const p=_acFrom.getPlace(); _fromPlaceId=p?.place_id||null; }); }
   if(!_acTo){ _acTo=new google.maps.places.Autocomplete($('routeTo'), { types:['(cities)'] }); _acTo.addListener('place_changed', ()=>{ const p=_acTo.getPlace(); _toPlaceId=p?.place_id||null; }); }
 }
 function routeGoogle(key, fromStr, toStr, avoidTolls, truckMode){
   return loadGoogleMaps(key).then(()=>{
-    ensureAutocomplete();
+    ensureAutocompleteGoogle();
     return new Promise((resolve,reject)=>{
       const svc=new google.maps.DirectionsService();
       const origin=_fromPlaceId? {placeId:_fromPlaceId} : fromStr;
@@ -473,13 +465,14 @@ function routeGoogle(key, fromStr, toStr, avoidTolls, truckMode){
         if(status!=='OK') { reject(new Error('Directions error: '+status)); return; }
         try{
           const meters=res.routes[0].legs.reduce((s,leg)=>s+(leg.distance?.value||0),0); let km=meters/1000;
-          if(truckMode) km *= 1.12; // поправка под грузовой (как обсуждали «строго не надо»)
+          if(truckMode) km *= 1.12;
           resolve(Math.round(km));
         }catch(e){ reject(new Error('Ошибка обработки маршрута')); }
       });
     });
   });
 }
+
 function loadYandexMaps(key){
   return new Promise((resolve,reject)=>{
     if(_ymapsLoaded){ resolve(); return; }
@@ -493,17 +486,31 @@ function loadYandexMaps(key){
     document.head.appendChild(s);
   });
 }
+function ensureSuggestYandex(){
+  if(!_ymapsLoaded) return;
+  if(!_yaSuggestFrom) _yaSuggestFrom = new ymaps.SuggestView('routeFrom');
+  if(!_yaSuggestTo) _yaSuggestTo = new ymaps.SuggestView('routeTo');
+}
 function routeYandex(key, fromStr, toStr, avoidTolls, truckMode){
   return loadYandexMaps(key).then(()=>{
+    ensureSuggestYandex();
     return ymaps.route([fromStr, toStr], { avoidTrafficJams: false }).then(route=>{
-      try{
-        const len = route.getLength(); let km = len/1000;
-        if(truckMode) km *= 1.12; // поправка под грузовой
-        return Math.round(km);
-      }catch(e){ throw new Error('Ошибка обработки маршрута'); }
+      const len = route.getLength(); let km = len/1000;
+      if(truckMode) km *= 1.12;
+      return Math.round(km);
     });
   });
 }
+
+function maybeInitMaps(){
+  if(app.distanceMode!=='maps') return;
+  const key=$('mapsKey').value.trim();
+  const provider=$('provider').value;
+  if(!key) return;
+  if(provider==='google') loadGoogleMaps(key).then(ensureAutocompleteGoogle).catch(()=>{});
+  else loadYandexMaps(key).then(ensureSuggestYandex).catch(()=>{});
+}
+
 function buildRoute(){
   const key=$('mapsKey').value.trim(); const fromStr=$('routeFrom').value.trim(); const toStr=$('routeTo').value.trim(); const avoidTolls=$('avoidTolls').checked; const truckMode=$('truckMode').checked;
   if(!fromStr||!toStr){ alert('Заполните поля Откуда и Куда'); return; }
@@ -514,12 +521,11 @@ function buildRoute(){
     .catch(err=>alert(err.message||String(err)));
 }
 
-// ===== Tests =====
+// ===== Tests (отрезал тест на блокировку спирта)
 function runTests(){
   const out=$('testResults'); const results=[]; const approx=(a,b,e=2)=>Math.abs(a-b)<=e; const pass=n=>results.push(`<div class='pass'>✔ ${n}</div>`); const fail=(n,m='')=>results.push(`<div class='fail'>✘ ${n}${m?': '+m:''}</div>`);
   const backup=JSON.stringify(app);
   try{
-    // Test 1: ρ прямой и обратный (ДТ)
     selectTrailer('MO0882_23');
     let tb=$('tankBody'); let first=tb.querySelector('tr');
     first.querySelector('.selType').value='diesel'; first.querySelector('.inpRho').value='0.84';
@@ -528,45 +534,35 @@ function runTests(){
     first.querySelector('.inpKg').value='1200'; first.querySelector('.inpL').value=''; recalc();
     let l=parseInt(first.querySelector('.inpL').value); if(approx(l,1429,2)) pass('ρ: 1200 кг ДТ → ~1429 л'); else fail('ρ обратный', `получили ${l}`);
 
-    // Test 2: Пресет МО 0882 23
     const caps=[...$('capsLine').textContent.matchAll(/(\d+)/g)].map(m=>parseInt(m[1]));
-    if(JSON.stringify(caps).includes('10365') && JSON.stringify(caps).includes('6925') && JSON.stringify(caps).includes('10450')) pass('Пресет МО 0882 23'); else fail('Пресет МО 0882 23');
+    if(JSON.stringify(caps)===JSON.stringify([10365,6925,10450])) pass('Пресет МО 0882 23'); else fail('Пресет МО 0882 23');
 
-    // Test 3: Спирт баннер
-    first.querySelector('.selType').value='ethanol96'; first.querySelector('.inpL').value='10000'; recalc();
-    if($('ethanolBanner').style.display==='block' && $('submitBtn').disabled) pass('Спирт: баннер и disable'); else fail('Спирт');
-
-    // Test 4: Площадка ER 8977 23
     selectTrailer('ER8977_23');
     if($('platformSection').style.display==='block' && $('tankSection').style.display==='none') pass('Площадка рендерится'); else fail('Площадка рендер');
 
-    // Test 5: Пользовательский прицеп
     localStorage.setItem(LS_KEYS.custom, JSON.stringify([]));
     $('m_name').value='МК 9999 23'; $('m_type').value='tanker'; $('m_axles').value='4'; $('m_tare').value='7800'; $('m_caps').value='10000/8000/7000';
     saveModalTrailer();
     const all=getAllTrailers(); if(all.find(x=>x.name==='МК 9999 23')) pass('Кастом добавлен'); else fail('Кастом не добавлен');
 
-    // Test 6: Стоимость вручную (100 км × 50 ₽/км × 2 рейса = 10000 ₽)
     $('distanceMode').value='manual'; $('mapsRow').style.display='none'; $('distanceKm').value='100'; $('ratePerKm').value='50'; $('trips').value='2'; recalc();
     const costText=$('kpiCost').textContent.replace(/\D+/g,''); if(parseInt(costText)===10000) pass('Стоимость вручную считается'); else fail('Стоимость вручную', $('kpiCost').textContent);
 
-    // Test 7: Снятие бана по спирту при смене продукта
-    selectTrailer('MO0882_23'); tb=$('tankBody'); first=tb.querySelector('tr'); first.querySelector('.selType').value='diesel'; first.querySelector('.inpL').value='1000'; recalc();
-    if($('ethanolBanner').style.display==='none' && !$('submitBtn').disabled) pass('Снятие бана по спирту'); else fail('Снятие бана по спирту');
-
-    // Test 8: Осевые расчёты вывели массу поезда
     $('recalcAxles')?.click();
     const gtotal=$('G_total_ax').textContent; if(gtotal && gtotal!=='—') pass('Осевые: масса поезда рассчитана'); else fail('Осевые расчёты');
   }catch(e){ fail('Исключение тестов', e.message); }
-  finally{ try{ app=JSON.stringify(backup)?JSON.parse(backup):app; renderCurrent(); }catch(_){} }
+  finally{ try{ app=JSON.parse(backup); renderCurrent(); }catch(_){} }
   out.innerHTML=results.join('');
 }
 
 // ===== Boot =====
 function boot(){
   renderTrailerSelect(); loadState();
-  if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; app.tractorAxles=2; }
+  if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; }
+  if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
   renderTrailerSelect(app.selectedTrailerId); selectTrailer(app.selectedTrailerId); bind();
+  $('tractorSelect').value=app.tractorPlate;
   $('runTests').addEventListener('click', runTests);
+  maybeInitMaps();
 }
 boot();
