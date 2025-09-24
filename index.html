@@ -63,36 +63,33 @@
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Конфигурация</h2>
       <div class="row cols-3">
-        <div>
-          <label>Тягач (оси)</label>
-          <select id="tractorAxles"><option value="2">2</option><option value="3">3</option></select>
-        </div>
-        <div>
-          <label>Тягач (госномер)</label>
-          <div class="row inline">
-            <select id="tractorSelect" style="flex:1"></select>
-            <button class="btn" id="addTruck">+ Тягач</button>
-          </div>
-        </div>
-        <div>
-          <label>Прицеп (номер)</label>
-          <select id="trailerSelect"></select>
-        </div>
-        <div>
-  <label>Тягач (госномер)</label>
-  <div style="display:flex;gap:6px;align-items:center">
-    <select id="tractorSelect" style="flex:1"></select>
-    <button class="btn" id="addTruck" title="Добавить тягач">+</button>
+  <div>
+    <label>Тягач (оси)</label>
+    <select id="tractorAxles">
+      <option value="2">2</option>
+      <option value="3">3</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Тягач (госномер)</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="tractorSelect" style="flex:1"></select>
+      <button class="btn" id="addTruck" title="Добавить тягач">+</button>
+    </div>
+  </div>
+
+  <div>
+    <label>Прицеп (номер)</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="trailerSelect" style="flex:1"></select>
+      <button class="btn" id="addTrailer" title="Добавить прицеп">+</button>
+    </div>
   </div>
 </div>
-<div>
-  <label>Прицеп (номер)</label>
-  <div style="display:flex;gap:6px;align-items:center">
-    <select id="trailerSelect" style="flex:1"></select>
-    <button class="btn" id="addTrailer" title="Добавить прицеп">+</button>
-  </div>
-</div>
-      <div id="trailerInfo" class="small" style="margin-top:6px"></div>
+
+<div id="trailerInfo" class="small" style="margin-top:6px"></div>
+
     </div></div>
 
     <!-- Маршрут и стоимость -->
