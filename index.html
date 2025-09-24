@@ -7,31 +7,32 @@
   <link rel="icon" href="data:,V" />
   <style>
     :root{--bg:#f7f7f8;--card:#ffffff;--text:#111827;--muted:#6b7280;--accent:#0ea5e9;--good:#16a34a;--bad:#dc2626;--warn:#ca8a04;--border:#e5e7eb}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:var(--bg); color:var(--text);}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;background:var(--bg);color:var(--text)}
     .wrap{max-width:1200px;margin:0 auto;padding:24px}
     .title{display:flex;gap:12px;align-items:center;margin:8px 0 16px}
     .title h1{font-size:22px;margin:0}
     .muted{color:var(--muted);font-size:14px}
     .grid{display:grid;gap:16px}
     @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.04)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 16px rgba(0,0,0,.04)}
     .card .c{padding:16px}
     label{display:block;font-size:13px;color:#374151;margin:6px 0}
     input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none}
-    input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+    input::placeholder{color:#9aa3af}
+    input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
     .row{display:grid;gap:12px}
-    @media(min-width:720px){.row.cols-2{grid-template-columns:1fr 1fr} .row.cols-3{grid-template-columns:1fr 1fr 1fr} .row.cols-4{grid-template-columns:repeat(4,1fr)}}
-    .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;height:42px}
+    @media(min-width:720px){.row.cols-2{grid-template-columns:1fr 1fr}.row.cols-3{grid-template-columns:1fr 1fr 1fr}.row.cols-4{grid-template-columns:repeat(4,1fr)}}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .small{font-size:12px;color:#6b7280}
+    .small{font-size:12px;color:var(--muted)}
     .kpi{display:grid;gap:12px;grid-template-columns:1fr 1fr}
     .kpi .box{border:1px solid var(--border);border-radius:12px;padding:12px}
     .kpi .t{color:var(--muted);font-size:12px}
     .kpi .v{font-weight:600;font-size:18px}
     .banner{border:1px dashed #facc15;background:#fffbeb;padding:12px;border-radius:12px}
     table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th,td{font-size:14px}
+    th,td{font-size:14px;vertical-align:middle}
     th{color:#374151;text-align:left}
     td>input,td>select{width:100%}
     .cap{font-size:12px;color:#6b7280}
@@ -42,13 +43,10 @@
     details.tests summary{cursor:pointer}
     .pass{color:#16a34a}
     .fail{color:#dc2626}
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px;z-index:20}
     .modal.open{display:flex}
     .modal>.sheet{background:#fff;border-radius:16px;padding:16px;max-width:640px;width:100%;border:1px solid var(--border)}
-    @media(min-width:980px){
-      .row.cols-3:has(#tractorAxles){ grid-template-columns: 1fr 1fr 1fr auto; }
-      .row.cols-3:has(#tractorAxles) .btns{ justify-content:flex-end; }
-    }
+    .row.inline{display:flex;gap:8px;align-items:center}
   </style>
 </head>
 <body>
@@ -57,10 +55,11 @@
       <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0369a1">V</div>
       <div>
         <h1>Вигард — калькулятор наливных грузов</h1>
-        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем. <b>Спирт</b> временно не оформляем (расчёт доступен).</div>
+        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем.</div>
       </div>
     </div>
 
+    <!-- Конфигурация -->
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Конфигурация</h2>
       <div class="row cols-3">
@@ -70,15 +69,17 @@
         </div>
         <div>
           <label>Тягач (госномер)</label>
-          <select id="tractorSelect"></select>
+          <div class="row inline">
+            <select id="tractorSelect" style="flex:1"></select>
+            <button class="btn" id="addTruck">+ Тягач</button>
+          </div>
         </div>
         <div>
           <label>Прицеп (номер)</label>
           <select id="trailerSelect"></select>
         </div>
         <div class="btns" style="align-items:end">
-          <button class="btn" id="addTruck">Добавить тягач</button>
-          <button class="btn" id="resetPreset">Сбросить к пресету</button>
+          <button class="btn" id="resetPreset">Сбросить пресет</button>
           <button class="btn" id="addTrailer">Добавить прицеп</button>
         </div>
       </div>
@@ -88,84 +89,100 @@
     <!-- Маршрут и стоимость -->
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Маршрут и стоимость</h2>
-      <div class="row cols-4">
+
+      <div class="row cols-3">
         <div>
           <label>Провайдер маршрута</label>
-          <select id="provider"><option value="google" selected>Google</option><option value="yandex">Яндекс</option></select>
+          <select id="provider">
+            <option value="google">Google</option>
+            <option value="yandex">Яндекс</option>
+          </select>
         </div>
         <div>
           <label>Режим расстояния</label>
           <select id="distanceMode">
-            <option value="manual" selected>Вручную</option>
+            <option value="manual">Вручную</option>
             <option value="maps">Через карты</option>
           </select>
         </div>
         <div>
-          <label>Расстояние, км (если вручную)</label>
-          <input id="distanceKm" type="number" placeholder="350">
-        </div>
-        <div>
-          <label>Ставка, ₽/км</label>
-          <input id="ratePerKm" type="number" placeholder="120">
+          <label>API-ключ (для карт)</label>
+          <input id="mapsKey" placeholder="вставьте ключ API">
         </div>
       </div>
-      <div class="row cols-3" id="mapsRow" style="display:none">
+
+      <!-- Поля маршрута ВСЕГДА видны -->
+      <div class="row cols-3" id="routeRow">
         <div>
           <label>Откуда (город)</label>
-          <input id="routeFrom" placeholder="например: Кропоткин" value="">
+          <input id="routeFrom" placeholder="Введите название">
         </div>
         <div>
           <label>Куда (город)</label>
-          <input id="routeTo" placeholder="например: Краснодар" value="">
+          <input id="routeTo" placeholder="Введите название">
         </div>
         <div style="align-self:end" class="btns">
-          <input id="mapsKey" placeholder="API key (Google или Яндекс)" class="small" style="width:56%">
-          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="truckMode" type="checkbox"> грузовой маршрут</label>
           <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
-          <button class="btn" id="btnRoute">Получить расстояние</button>
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="truckMode" type="checkbox" checked> грузовой режим*</label>
+          <button class="btn" id="btnRoute">Построить маршрут</button>
         </div>
       </div>
-      <div class="small" id="mapsNote" style="display:none;margin-top:6px">
-        Google: грузовые ограничения учитываются не полностью (ставим поправку при «грузовой маршрут»). Яндекс: строим через JS-API; строгий truck-routing через HTTP API недоступен из браузера — применяем поправку.
+      <div class="small" id="mapsNote" style="display:none;margin-top:6px">* «Грузовой режим» приблизительно учитывает объезды (добавляет ~12% к километражу). Для строгих ограничений можно интегрировать HERE/Yandex Truck API.</div>
+
+      <div class="row cols-3" style="margin-top:8px">
+        <div>
+          <label>Расстояние, км (если вручную)</label>
+          <input id="distanceKm" type="number" placeholder="введите число">
+        </div>
+        <div>
+          <label>Ставка, ₽/км</label>
+          <input id="ratePerKm" type="number" placeholder="например 120">
+        </div>
+        <div>
+          <label>Количество рейсов</label>
+          <input id="trips" type="number" value="1">
+        </div>
       </div>
+
       <div class="kpi" style="margin-top:12px">
         <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
         <div class="box"><div class="t">Ставка</div><div class="v" id="kpiRate">—</div></div>
         <div class="box"><div class="t">Рейсов</div><div class="v" id="kpiTrips">—</div></div>
         <div class="box"><div class="t">Итого стоимость</div><div class="v" id="kpiCost">—</div></div>
       </div>
-      <div class="row cols-3" style="margin-top:8px">
-        <div>
-          <label>Количество рейсов</label>
-          <input id="trips" type="number" value="1">
-        </div>
-      </div>
     </div></div>
 
     <div class="grid" style="margin-top:16px">
+      <!-- Цистерна / Площадка -->
       <div class="card"><div class="c">
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
-        <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
-        <div class="small" style="margin:6px 0; display:flex; gap:12px; align-items:center">
-          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" id="chkAllSame"> Все отсеки — как #1</label>
-          <button class="btn" id="btnAddProduct">Добавить продукт</button>
-        </div>
+
         <div id="tankSection">
+          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
+            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
+            <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+          </div>
+
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th><th>Т (т)</th><th>Объем, м³</th>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th><th>т</th><th>м³</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
           </table>
+
           <div class="small">Лимиты по отсекам: <span id="capsLine"></span></div>
-          <div id="fitSummary" class="small" style="margin-top:6px"></div>
+          <div class="small" id="fitSummary" style="margin-top:6px"></div>
+
           <div class="btns" style="margin-top:8px">
             <button class="btn" id="addCompartment">+ Отсек</button>
             <button class="btn" id="removeCompartment">− Отсек</button>
+            <button class="btn" id="fillMax">Заполнить по максимуму</button>
+            <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
+
         <div id="platformSection" style="display:none">
           <table>
             <thead><tr><th>Позиция</th><th>Масса, кг</th></tr></thead>
@@ -174,6 +191,7 @@
         </div>
       </div></div>
 
+      <!-- Итоги -->
       <div class="card"><div class="c">
         <h3 style="margin:0 0 8px">Итоги и предупреждения</h3>
         <div class="kpi">
@@ -189,6 +207,7 @@
           <button class="btn" id="copyBrief">Скопировать мини-бриф</button>
           <button class="btn primary" id="submitBtn">Оформить / Сохранить расчёт</button>
         </div>
+
         <details class="tests"><summary>Тесты (debug)</summary>
           <div class="btns" style="margin:8px 0"><button class="btn" id="runTests">Запустить тесты</button></div>
           <div id="testResults" class="small"></div>
@@ -197,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Modal: add trailer -->
+  <!-- Modal: прицеп -->
   <div id="modal" class="modal"><div class="sheet">
     <h3 style="margin-top:0">Добавить прицеп</h3>
     <div class="row cols-2">
@@ -216,7 +235,7 @@
     </div>
   </div></div>
 
-  <!-- Modal: add truck -->
+  <!-- Modal: тягач -->
   <div id="modalTruck" class="modal"><div class="sheet">
     <h3 style="margin-top:0">Добавить тягач</h3>
     <div class="row cols-2">
@@ -229,6 +248,673 @@
     </div>
   </div></div>
 
-  <script src="app.js"></script>
+  <!-- Axle calc -->
+  <div class="wrap" style="margin-top:8px">
+    <div class="card"><div class="c">
+      <h2 style="margin:0 0 12px">Расчёт нагрузок на оси</h2>
+      <div class="small" style="margin:-6px 0 10px">Упрощённая статика для автопоезда (тягач + полуприцеп). Если нет точной геометрии — используются типовые значения.</div>
+
+      <h3 style="margin:8px 0">Параметры тягача</h3>
+      <div class="row cols-3">
+        <div>
+          <label>Оси тягача</label>
+          <select id="axTr_axle"><option value="2">2</option><option value="3">3</option></select>
+        </div>
+        <div>
+          <label>База LT (мм, 1-я ↔ задняя группа)</label>
+          <input id="LT_ax" type="number" value="3800" />
+        </div>
+        <div>
+          <label>l2 (мм, задняя ось → седло)</label>
+          <input id="l2_ax" type="number" value="350" />
+        </div>
+      </div>
+      <div class="row cols-3">
+        <div>
+          <label>Нагрузка пустого: перед NT1,0 (кг)</label>
+          <input id="NT10_ax" type="number" value="4200" />
+        </div>
+        <div>
+          <label>Нагрузка пустого: зад гр. NT2,0 (кг)</label>
+          <input id="NT20_ax" type="number" value="4000" />
+        </div>
+        <div>
+          <label>Оси прицепа (из пресета)</label>
+          <input id="axTl_ax" type="number" value="3" readonly />
+        </div>
+      </div>
+
+      <h3 style="margin:8px 0">Параметры полуприцепа</h3>
+      <div class="row cols-4">
+        <div>
+          <label>Масса пустого mp (кг)</label>
+          <input id="mp_ax" type="number" value="7300" />
+        </div>
+        <div>
+          <label>LA (мм, длина площадки)</label>
+          <input id="LA_ax" type="number" value="12000" />
+        </div>
+        <div>
+          <label>LB (мм, центр тележки → седло)</label>
+          <input id="LB_ax" type="number" value="7600" />
+        </div>
+        <div>
+          <label>LC (мм, центр тележки → зад)</label>
+          <input id="LC_ax" type="number" value="4400" />
+        </div>
+      </div>
+      <div class="row cols-3">
+        <div>
+          <label>Нагрузка пустого на седло NTp.p. (кг)</label>
+          <input id="NTpp_ax" type="number" value="2000" />
+        </div>
+        <div style="align-self:end" class="btns">
+          <button class="btn" id="recalcAxles">Пересчитать оси</button>
+        </div>
+      </div>
+
+      <div class="kpi" style="margin-top:12px">
+        <div class="box"><div class="t">Масса автопоезда</div><div class="v" id="G_total_ax">—</div></div>
+        <div class="box"><div class="t">Ось 1 (передняя, тягач)</div><div class="v" id="Ax1_ax">—</div></div>
+        <div class="box"><div class="t">Задняя группа тягача</div><div class="v" id="Ax2_ax">—</div></div>
+        <div class="box"><div class="t">Тележка прицепа (сумма / по оси)</div><div class="v" id="AxTl_ax">—</div></div>
+      </div>
+      <div class="banner" id="axWarn_ax" style="display:none;margin-top:10px"></div>
+      <div class="small" style="margin-top:6px">Грубая модель: равномерное распределение по тележке прицепа и задней группе тягача. Для точного расчёта нужны паспортные размеры.</div>
+    </div></div>
+  </div>
+
+<script>
+/* ===================== Helpers ===================== */
+function $(id){ return document.getElementById(id); }
+function num(v,def=0){ const n=parseFloat(v); return isFinite(n)?n:def; }
+function fmtL(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' л':'—'; }
+function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' кг':'—'; }
+
+/* ===================== Data ===================== */
+const BASE_PRODUCTS = [
+  { key: "diesel", label: "Дизельное топливо (ДТ)", rho: 0.84, adr: "3" },
+  { key: "gas92", label: "Бензин АИ-92", rho: 0.74, adr: "3" },
+  { key: "gas95", label: "Бензин АИ-95", rho: 0.75, adr: "3" },
+  { key: "molasses", label: "Патока", rho: 1.40, adr: "—" },
+  { key: "syrup", label: "Сироп сахарный", rho: 1.30, adr: "—" },
+  { key: "wine", label: "Вино", rho: 0.99, adr: "—" },
+  { key: "ethanol96", label: "Спирт этиловый (96%)", rho: 0.789, adr: "3" },
+  { key: "methanol", label: "Метанол", rho: 0.792, adr: "3" },
+  { key: "vinyl_acetate", label: "Винилацетат мономер (VAM)", rho: 0.934, adr: "3" },
+  { key: "butyl_acetate", label: "Бутилацетат", rho: 0.882, adr: "3" },
+  { key: "methyl_acetate", label: "Метилацетат", rho: 0.932, adr: "3" },
+  { key: "ethyl_acetate", label: "Этил ацетат", rho: 0.902, adr: "3" },
+  { key: "n_butanol", label: "н-Бутанол", rho: 0.810, adr: "3" },
+  { key: "acetic_acid_glacial", label: "Уксусная кислота (ледяная)", rho: 1.049, adr: "8" },
+  { key: "sulfuric_acid_96", label: "Серная кислота (96–98%)", rho: 1.830, adr: "8" },
+  { key: "heavy_oil", label: "Тяжёлые масла", rho: 0.93, adr: "3/—" },
+  { key: "formalin37", label: "Формалин 37%", rho: 1.09, adr: "8" }
+];
+
+const BASE_TRUCKS = [
+  "В 010 СЕ 123","М 020 АМ 123","Е 030 ВК 123","Е 040 ВК 123","Т 050 ВТ 93","Н 060 ВТ 123","С 070 УА 93",
+  "Р 100 СА 93","Н 200 НУ 23","У 300 ХА 93","Х 400 СХ 93","О 600 РВ 93",
+  "В 800 ТУ 93","В 900 ТУ 93","С 101 ОХ 123","Е 202 УО 93","А 303 ЕР 123","Т 404 РС 123","Р 505 МВ 123","У 606 МВ 123",
+  "О 707 СУ 123","У 808 РУ 123","У 909 СН 123","Е 111 КС 123","Р 212 СН 23","Т 313 РУ 93","Н 414 РВ 93","Х 515 ТМ 93",
+  "У 616 СН 123","Х 717 РН 93","Р 919 ВК 93","У 616 СН 123","С 999 РХ 123","А 444 АУ 23","О 555 КК 123","Т 777 АК 123","Н 888 РС 123"
+];
+
+const BASE_TRAILERS = [
+  { id: "ER8977_23", name: "ЕР 8977 23", type: "platform", axles: 3, tareKg: 5900, positions: 4 },
+  { id: "EU2938_23", name: "ЕУ 2938 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [12000, 6500, 12500] },
+  { id: "MM8442_23", name: "ММ 8442 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [29340] },
+  { id: "MM8041_23", name: "ММ 8041 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [29310] },
+  { id: "MO7958_23", name: "МО 7958 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [13000, 7000, 13000] },
+  { id: "MA2567_23", name: "МА 2567 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 10000] },
+  { id: "MN9545_23", name: "МН 9545 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 10000] },
+  { id: "MK6187_23", name: "МК 6187 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11000, 6000, 13000] },
+  { id: "MO0310_23", name: "МО 0310 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [7500, 11000, 7500, 6000] },
+  { id: "MO1891_23", name: "МО 1891 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 13000] },
+  { id: "MM8413_23", name: "ММ 8413 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [29340] },
+  { id: "EU9285_23", name: "ЕУ 9285 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [3000, 13850, 11750] },
+  { id: "EU2937_23", name: "ЕУ 2937 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [3000, 13850, 11750] },
+  { id: "MR3376_23", name: "МР 3376 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [3000, 13850, 11750] },
+  { id: "MA8877_23", name: "МА 8877 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 5000, 12000] },
+  { id: "MN6880_23", name: "МН 6880 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [29130] },
+  { id: "EU8672_23", name: "ЕУ 8672 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [12500, 7500, 7500, 12500] },
+  { id: "MM8488_23", name: "ММ 8488 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [29130] },
+  { id: "MM4239_23", name: "ММ 4239 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 4000, 6000, 11000] },
+  { id: "MA8880_23", name: "МА 8880 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 4000, 6000, 11000] },
+  { id: "MK6180_23", name: "МК 6180 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [13500, 7500, 7500, 9350] },
+  { id: "EU5123_23", name: "ЕУ 5123 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11000, 7500, 10000] },
+  { id: "MK5737_23", name: "МК 5737 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [30000] },
+  { id: "ET0683_23", name: "ЕТ 0683 23", type: "tanker", axles: 3, tareKg: 7300, compartmentsLiters: [22000] },
+  { id: "MO0882_23", name: "МО 0882 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [10365, 6925, 10450] },
+  { id: "MA2562_23", name: "МА 2562 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 9000] },
+  { id: "MU5054_23", name: "МУ 5054 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11422, 4556, 12653] },
+  { id: "MK5702_23", name: "МК 5702 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9750, 7500, 7500, 7500] },
+  { id: "EU5224_23", name: "ЕУ 5224 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [11000, 5500, 4500, 11000] },
+  { id: "MM6410_23", name: "ММ 6410 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [10000, 7000, 5000, 10000] },
+  { id: "ET3627_23", name: "ЕТ 3627 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [10500, 5000, 6500, 10000] },
+  { id: "MA3650_23", name: "МА 3650 23", type: "tanker", axles: 4, tareKg: 7800, compartmentsLiters: [9000, 8000, 12000] }
+];
+
+const LS_KEYS = {
+  custom: 'vigard_custom_trailers_v1',
+  products: 'vigard_custom_products_v1',
+  trucks: 'vigard_custom_trucks_v1',
+  truckAxlesMap: 'vigard_truck_axles_map_v1',
+  state:  'vigard_state_v5'
+};
+
+/* ========== Products (add/custom) ========== */
+function getAllProducts(){ const custom = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]'); return [...BASE_PRODUCTS, ...custom]; }
+function addCustomProduct(label, rho, adr){
+  const key = ('custom_'+label).toLowerCase().replace(/\s+/g,'_').replace(/[^\wа-яё_-]/gi,'');
+  const list = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]'); list.push({ key, label, rho, adr });
+  localStorage.setItem(LS_KEYS.products, JSON.stringify(list));
+}
+
+/* ========== Trucks ========== */
+function getAllTrucks(){ const custom = JSON.parse(localStorage.getItem(LS_KEYS.trucks)||'[]'); return [...BASE_TRUCKS, ...custom]; }
+function getTruckAxles(plate){ try{ const map = JSON.parse(localStorage.getItem(LS_KEYS.truckAxlesMap)||'{}'); return map[plate]||null; }catch(e){ return null; } }
+function setTruckAxles(plate, axles){
+  if(!plate) return; let map={}; try{ map = JSON.parse(localStorage.getItem(LS_KEYS.truckAxlesMap)||'{}'); }catch(e){}
+  map[plate]=axles; localStorage.setItem(LS_KEYS.truckAxlesMap, JSON.stringify(map));
+}
+
+/* ========== Trailers ========== */
+function getAllTrailers(){ const custom = JSON.parse(localStorage.getItem(LS_KEYS.custom)||'[]'); return [...BASE_TRAILERS, ...custom]; }
+function renderTrailerSelect(selectedId){
+  const sel=$('trailerSelect'); sel.innerHTML='';
+  getAllTrailers().forEach(t=>{ const opt=document.createElement('option'); opt.value=t.id; opt.textContent=t.name; if(t.id===selectedId) opt.selected=true; sel.appendChild(opt); });
+}
+function renderTractorSelect(selected){
+  const sel=$('tractorSelect'); sel.innerHTML='';
+  getAllTrucks().forEach(num=>{ const opt=document.createElement('option'); opt.value=num; opt.textContent=num; sel.appendChild(opt); });
+  if(selected) sel.value=selected;
+}
+function setTrailerInfo(t){
+  const info=$('trailerInfo'); if(!t){ info.textContent=''; return; }
+  if(t.type==='tanker') info.innerHTML=`Тип: цистерна · Оси: ${t.axles} · Тара: ${t.tareKg||'—'} кг · Отсеки: ${t.compartmentsLiters.join(' / ')} л (∑ ${t.compartmentsLiters.reduce((a,b)=>a+b,0)} л)`;
+  else info.innerHTML=`Тип: площадка · Оси: ${t.axles} · Тара: ${t.tareKg||'—'} кг · Позиции: ${t.positions||4}`;
+}
+
+/* ========== Tanker table ========== */
+function densityOptionsHtml(selectedKey){
+  return getAllProducts().map(d=>`<option value="${d.key}" ${d.key===selectedKey?'selected':''}>${d.label}</option>`).join('');
+}
+function buildTankRows(state){
+  const tb=$('tankBody'); tb.innerHTML='';
+  const caps=state.caps||[]; $('capsLine').textContent=caps.map((c,i)=>`#${i+1}: ${c} л`).join(', ');
+  state.rows.forEach((row,idx)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><span class="pill">#${idx+1}</span><div class="cap">лимит ${caps[idx]??'—'} л</div></td>
+      <td><select class="selType">${densityOptionsHtml(row.typeKey||'diesel')}</select></td>
+      <td><select class="selAdr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select></td>
+      <td><input class="inpRho" type="number" step="0.001" value="${row.rho??0.84}"></td>
+      <td><input class="inpL" type="number" value="${row.liters??0}"></td>
+      <td><input class="inpKg" type="number" value="${row.kg??0}"></td>
+      <td><input class="inpT" type="number" readonly value="${((row.kg??0)/1000)||0}"></td>
+      <td><input class="inpM3" type="number" readonly value="${((row.liters??0)/1000)||0}"></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/* ========== Platform table ========== */
+function buildPlatRows(state){
+  const tb=$('platBody'); tb.innerHTML='';
+  const n=state.positions||4;
+  for(let i=0;i<n;i++){
+    const tr=document.createElement('tr');
+    const m=state.masses?.[i]||0;
+    tr.innerHTML=`<td><span class="pill">#${i+1}</span></td><td><input class="inpMass" type="number" value="${m}"></td>`;
+    tb.appendChild(tr);
+  }
+}
+
+/* ===================== App state ===================== */
+let app={
+  tractorAxles:2,
+  tractorPlate:null,
+  selectedTrailerId:null,
+  trailerState:null,
+  distanceMode:'manual', // 'manual' | 'maps'
+  provider:'google',     // 'google' | 'yandex'
+  distanceKm:0,
+  ratePerKm:0,
+  trips:1,
+  routeFrom:'',
+  routeTo:''
+};
+function loadState(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null'); if(s) app=s; }catch(e){} }
+function saveState(){ localStorage.setItem(LS_KEYS.state, JSON.stringify(app)); }
+
+/* ===================== Init/Render ===================== */
+function tankerFromPreset(compartments){
+  return { caps:[...compartments], rows: compartments.map(()=>({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, kg:0})) };
+}
+function ensureRowsMatchCaps(state){
+  const need=state.caps.length;
+  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, kg:0});
+  while(state.rows.length>need) state.rows.pop();
+}
+function selectTrailer(id){
+  const all=getAllTrailers();
+  const t=all.find(x=>x.id===id) || all[0];
+  app.selectedTrailerId=t.id;
+  if(t.type==='tanker'){ app.trailerState={type:'tanker', ...tankerFromPreset(t.compartmentsLiters)}; }
+  else { app.trailerState={type:'platform', positions:t.positions||4, masses:Array(t.positions||4).fill(0)}; }
+  renderCurrent(); saveState();
+}
+function renderCurrent(){
+  const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
+  setTrailerInfo(t);
+  renderTrailerSelect(app.selectedTrailerId);
+  renderTractorSelect(app.tractorPlate);
+  if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
+  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; $('tractorAxles').value=String(app.tractorAxles||2);
+  $('tractorSelect').value=app.tractorPlate;
+
+  $('provider').value=app.provider||'google';
+  $('distanceMode').value=app.distanceMode||'manual';
+
+  $('distanceKm').value=app.distanceKm||'';
+  $('ratePerKm').value=app.ratePerKm||'';
+  $('trips').value=app.trips||1;
+
+  $('routeFrom').value=app.routeFrom||'';
+  $('routeTo').value=app.routeTo||'';
+  $('mapsNote').style.display=(app.distanceMode==='maps')?'block':'none';
+
+  if(app.trailerState?.type==='tanker'){
+    $('tankSection').style.display='block'; $('platformSection').style.display='none';
+    ensureRowsMatchCaps(app.trailerState); buildTankRows(app.trailerState);
+  } else {
+    $('tankSection').style.display='none'; $('platformSection').style.display='block'; buildPlatRows(app.trailerState);
+  }
+  recalc();
+}
+
+/* ===================== Recalc ===================== */
+function recalc(){
+  const tstate=app.trailerState; const warns=[]; let sumL=0, sumKg=0;
+  if($('tractorSelect')) app.tractorPlate=$('tractorSelect').value||app.tractorPlate;
+
+  if(tstate.type==='tanker'){
+    const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
+    rows.forEach((tr,i)=>{
+      const typeKey=tr.querySelector('.selType').value;
+      const dict=getAllProducts().find(d=>d.key===typeKey) || getAllProducts()[0];
+
+      // авто ADR/ρ при смене типа
+      const rhoInp=tr.querySelector('.inpRho');
+      const adrSel=tr.querySelector('.selAdr');
+      if(!rhoInp.value || rhoInp.value==='0') rhoInp.value = dict.rho;
+      if(adrSel && adrSel.value==='Не знаю'){ const opt=[...adrSel.options].find(o=>o.value===String(dict.adr)); if(opt) adrSel.value=opt.value; }
+
+      const rho=num(rhoInp.value, dict.rho);
+      const adr=adrSel.value;
+
+      let liters=num(tr.querySelector('.inpL').value, NaN);
+      let kg=num(tr.querySelector('.inpKg').value, NaN);
+
+      if(!isFinite(liters) && isFinite(kg)) liters = rho>0? kg/rho : 0;
+      if(!isFinite(kg) && isFinite(liters)) kg = liters*rho;
+      if(!isFinite(liters)) liters=0; if(!isFinite(kg)) kg=0;
+
+      if(liters<0||kg<0) warns.push(`Отсек #${i+1}: отрицательные значения`);
+      const cap=tstate.caps[i]??Infinity; if(liters>cap) warns.push(`Переполнение отсека #${i+1}: ${Math.round(liters)} л > лимита ${cap} л`);
+
+      tr.querySelector('.inpL').value = liters || 0; tr.querySelector('.inpKg').value = kg || 0;
+      tr.querySelector('.inpT').value  = (kg/1000).toFixed(3);
+      tr.querySelector('.inpM3').value = (liters/1000).toFixed(3);
+
+      tstate.rows[i]={typeKey, adr, rho, liters, kg};
+      sumL+=liters; sumKg+=kg;
+    });
+
+    // строка «сколько влезет» по каждой секции
+    const parts=(tstate.caps||[]).map((capL,i)=>{ const r=tstate.rows[i]||{}; const maxKg=capL*(r.rho||1); return `#${i+1}: ${capL} л (≈ ${Math.round(maxKg)} кг)`; });
+    $('fitSummary').textContent = parts.join(', ');
+
+  } else {
+    const tb=$('platBody'); const rows=[...tb.querySelectorAll('tr')];
+    let masses=[]; rows.forEach((tr,i)=>{ let m=num(tr.querySelector('.inpMass').value,0); if(m<0){warns.push(`Позиция #${i+1}: отрицательная масса`); m=0;} masses[i]=m; sumKg+=m; });
+    tstate.masses=masses; sumL=NaN;
+  }
+
+  $('sumL').textContent = isNaN(sumL)? '—' : fmtL(sumL);
+  $('sumKg').textContent = fmtKg(sumKg);
+
+  const ul=$('warnList'); ul.innerHTML=''; if(warns.length===0){ const li=document.createElement('li'); li.textContent='Ошибок не обнаружено.'; ul.appendChild(li);} else { warns.forEach(w=>{ const li=document.createElement('li'); li.innerHTML=`<span class="warn">⚠</span> ${w}`; ul.appendChild(li); }); }
+
+  app.distanceKm=num($('distanceKm').value, app.distanceKm||0);
+  app.ratePerKm=num($('ratePerKm').value, app.ratePerKm||0);
+  app.trips=parseInt($('trips').value)||app.trips||1;
+  const cost=app.distanceKm*app.ratePerKm*app.trips;
+  $('kpiDistance').textContent = (isFinite(app.distanceKm)&&app.distanceKm>0)? (Math.round(app.distanceKm).toLocaleString('ru-RU')+' км'):'—';
+  $('kpiRate').textContent = (isFinite(app.ratePerKm)&&app.ratePerKm>0)? (app.ratePerKm.toLocaleString('ru-RU')+' ₽/км'):'—';
+  $('kpiTrips').textContent = String(app.trips);
+  $('kpiCost').textContent = (isFinite(cost)&&cost>0)? cost.toLocaleString('ru-RU')+' ₽' : '—';
+
+  // brief
+  const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
+  let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, `Итоги: ${(isNaN(sumL)?'-':Math.round(sumL)+' л')}, ${(sumKg/1000).toFixed(2)} т`];
+  if(tstate.type==='tanker'){
+    tstate.rows.forEach((r,i)=>{ const d=getAllProducts().find(x=>x.key===r.typeKey); lines.push(`#${i+1}: ${(d?.label)||r.typeKey}, ADR ${r.adr}, ρ=${r.rho}, ${Math.round(r.liters)} л / ${Math.round(r.kg)} кг / ${(r.kg/1000).toFixed(3)} т / ${(r.liters/1000).toFixed(3)} м³`); });
+  } else { (tstate.masses||[]).forEach((kg,i)=>{ lines.push(`#${i+1}: ${Math.round(kg)} кг`); }); }
+  const routeStr=(app.routeFrom||app.routeTo)? `Маршрут: ${app.routeFrom||'?'} → ${app.routeTo||'?'}`:'';
+  const costStr=(isFinite(cost)&&cost>0)? `Стоимость: ${cost.toLocaleString('ru-RU')} ₽ (${app.distanceKm} км × ${app.ratePerKm} ₽/км × ${app.trips} рейс.)`:'';
+  if(routeStr) lines.push(routeStr); if(costStr) lines.push(costStr);
+  $('brief').value = lines.join('\n');
+
+  saveState();
+}
+
+/* ===================== Events ===================== */
+function bind(){
+  $('trailerSelect').addEventListener('change', e=>selectTrailer(e.target.value));
+  $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; $('tractorAxles').value=String(ax); saveState(); recalc(); });
+  $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
+
+  $('provider').addEventListener('change', e=>{ app.provider=e.target.value; saveState(); maybeInitMaps(); });
+  $('distanceMode').addEventListener('change', e=>{ app.distanceMode=e.target.value; $('mapsNote').style.display=(app.distanceMode==='maps')?'block':'none'; saveState(); maybeInitMaps(); });
+
+  $('resetPreset').addEventListener('click', ()=>selectTrailer(app.selectedTrailerId));
+  $('copyBrief').addEventListener('click', ()=>navigator.clipboard.writeText($('brief').value));
+  $('addTrailer').addEventListener('click', openModal);
+  $('addTruck').addEventListener('click', openTruckModal);
+
+  ['distanceKm','ratePerKm','trips','routeFrom','routeTo'].forEach(id=>{
+    $(id).addEventListener('input', ()=>{
+      app.distanceKm=num($('distanceKm').value,0);
+      app.ratePerKm=num($('ratePerKm').value,0);
+      app.trips=parseInt($('trips').value)||1;
+      app.routeFrom=$('routeFrom').value;
+      app.routeTo=$('routeTo').value;
+      saveState(); recalc();
+    });
+  });
+
+  ['tankBody','platBody'].forEach(id=>{ $(id).addEventListener('input', recalc); });
+
+  // авто подстановка ADR/ρ при смене продукта
+  $('tankBody').addEventListener('change',(e)=>{
+    const tr=e.target.closest('tr'); if(!tr) return;
+    if(e.target.classList.contains('selType')){
+      const d=getAllProducts().find(x=>x.key===e.target.value);
+      if(d){
+        tr.querySelector('.inpRho').value=d.rho;
+        const adrSel=tr.querySelector('.selAdr'); const opt=[...adrSel.options].find(o=>o.value===String(d.adr)); if(opt) adrSel.value=opt.value;
+        recalc();
+      }
+    }
+  });
+
+  $('chkAllSame').addEventListener('change',(e)=>{
+    if(!e.target.checked) return;
+    const tb=$('tankBody'); const first=tb.querySelector('tr'); if(!first) return;
+    const typeKey=first.querySelector('.selType').value;
+    const rho= num(first.querySelector('.inpRho').value,1);
+    const adr = first.querySelector('.selAdr').value;
+    [...tb.querySelectorAll('tr')].forEach((tr,i)=>{ if(i===0) return; tr.querySelector('.selType').value=typeKey; tr.querySelector('.inpRho').value=rho; tr.querySelector('.selAdr').value=adr; });
+    recalc();
+  });
+
+  // секции
+  $('addCompartment').addEventListener('click',()=>{
+    if(app.trailerState?.type!=='tanker') return;
+    app.trailerState.caps.push(8000); app.trailerState.rows.push({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, kg:0});
+    buildTankRows(app.trailerState); recalc();
+  });
+  $('removeCompartment').addEventListener('click',()=>{
+    if(app.trailerState?.type!=='tanker') return;
+    app.trailerState.caps.pop(); app.trailerState.rows.pop();
+    buildTankRows(app.trailerState); recalc();
+  });
+  $('fillMax').addEventListener('click',()=>{
+    if(app.trailerState?.type!=='tanker') return;
+    const tb=$('tankBody'); [...tb.querySelectorAll('tr')].forEach((tr,i)=>{ const cap=app.trailerState.caps[i]||0; tr.querySelector('.inpL').value=cap; tr.querySelector('.inpKg').value=''; }); recalc();
+  });
+  $('clearAll').addEventListener('click',()=>{
+    if(app.trailerState?.type!=='tanker') return;
+    const tb=$('tankBody'); [...tb.querySelectorAll('tr')].forEach((tr)=>{ tr.querySelector('.inpL').value=''; tr.querySelector('.inpKg').value=''; }); recalc();
+  });
+
+  // модалка прицепа
+  $('m_type').addEventListener('change', e=>{ const isPlat=e.target.value==='platform'; $('m_positions_wrap').style.display=isPlat?'block':'none'; $('m_caps_wrap').style.display=isPlat?'none':'block'; });
+  $('m_cancel').addEventListener('click', closeModal);
+  $('m_save').addEventListener('click', saveModalTrailer);
+
+  // модалка тягача
+  $('mt_cancel').addEventListener('click', closeTruckModal);
+  $('mt_save').addEventListener('click', saveTruck);
+
+  // кастомный продукт
+  $('btnAddProduct').addEventListener('click', ()=>{
+    const label = prompt('Название продукта:'); if(!label) return;
+    const rho = parseFloat(prompt('Плотность ρ, кг/л:','1.00')); if(!Number.isFinite(rho)||rho<=0){ alert('Некорректная плотность'); return; }
+    const adr = prompt('ADR (3 / 8 / —):','—') || '—';
+    addCustomProduct(label.trim(), rho, adr);
+    renderCurrent();
+  });
+
+  // карты
+  $('btnRoute').addEventListener('click', buildRoute);
+  $('mapsKey').addEventListener('input', ()=>maybeInitMaps());
+
+  // тесты
+  $('runTests').addEventListener('click', runTests);
+}
+
+/* ===================== Modals ===================== */
+function openModal(){ $('modal').classList.add('open'); }
+function closeModal(){ $('modal').classList.remove('open'); }
+function genId(name){ return name.replace(/\s+/g,'_'); }
+function saveModalTrailer(){
+  const name=$('m_name').value.trim(); if(!name){ alert('Укажи номер прицепа'); return; }
+  const type=$('m_type').value; const axles=parseInt($('m_axles').value)||4; const tare=num($('m_tare').value, type==='platform'?5900:(axles===3?7300:7800));
+  let obj;
+  if(type==='platform'){
+    const positions=parseInt($('m_positions').value)||4;
+    obj={ id: genId(name), name, type, axles, tareKg: tare, positions };
+  } else {
+    const capsStr=$('m_caps').value.trim(); const caps=capsStr? capsStr.split('/').map(s=>parseInt(s.replace(/\s+/g,''))||0) : [10000,8000,9000];
+    obj={ id: genId(name), name, type, axles, tareKg: tare, compartmentsLiters: caps };
+  }
+  const custom=JSON.parse(localStorage.getItem(LS_KEYS.custom)||'[]');
+  if(BASE_TRAILERS.find(x=>x.id===obj.id)) obj.id = obj.id+'_custom';
+  custom.push(obj); localStorage.setItem(LS_KEYS.custom, JSON.stringify(custom));
+  renderTrailerSelect(app.selectedTrailerId); closeModal();
+}
+
+function openTruckModal(){ $('modalTruck').classList.add('open'); }
+function closeTruckModal(){ $('modalTruck').classList.remove('open'); }
+function saveTruck(){
+  const plate=$('mt_plate').value.trim(); if(!plate){ alert('Введи госномер'); return; }
+  const axles=parseInt($('mt_axles').value)||2;
+  const list = JSON.parse(localStorage.getItem(LS_KEYS.trucks)||'[]');
+  if(!list.includes(plate)) list.push(plate);
+  localStorage.setItem(LS_KEYS.trucks, JSON.stringify(list));
+  setTruckAxles(plate, axles);
+  renderTractorSelect(plate);
+  $('tractorSelect').value=plate;
+  $('tractorAxles').value=String(axles);
+  app.tractorPlate=plate; app.tractorAxles=axles; saveState();
+  closeTruckModal();
+}
+
+/* ===================== Axle calc ===================== */
+function syncAxleParamsFromTrailer(){
+  const t = getAllTrailers().find(x=>x.id===app.selectedTrailerId);
+  if(!t) return;
+  $('axTl_ax').value = t.axles || 3;
+  $('mp_ax').value   = t.tareKg || (t.axles===3?7300:7800);
+  $('LA_ax').value = t.axles===3 ? 11800 : 12000;
+  $('LB_ax').value = t.axles===3 ? 7400  : 7600;
+  $('LC_ax').value = t.axles===3 ? 4400  : 4400;
+  $('NTpp_ax').value = 2000;
+}
+function collectMassesAndPositions(){
+  const LA = num($('LA_ax').value,12000);
+  const tstate = app.trailerState; let kg=[], xs=[];
+  if(tstate.type==='tanker'){
+    const n=tstate.rows.length; for(let i=0;i<n;i++){ const row=tstate.rows[i]; const W=num(row.kg,0); const x=LA*(i+1)/(n+1); kg.push(W); xs.push(x); }
+  } else {
+    const n=tstate.masses.length; for(let i=0;i<n;i++){ const W=num(tstate.masses[i],0); const x=LA*(i+1)/(n+1); kg.push(W); xs.push(x); }
+  }
+  return {kg,xs};
+}
+function calcAxles(){
+  const axTr=parseInt($('axTr_axle').value)||2; const axTl=parseInt($('axTl_ax').value)||3; const mT=8200;
+  const LT=num($('LT_ax').value,3800), l2=num($('l2_ax').value,350), NT10=num($('NT10_ax').value,4200), NT20=num($('NT20_ax').value,4000);
+  const mp=num($('mp_ax').value,7300), LA=num($('LA_ax').value,12000), LB=Math.max(1,num($('LB_ax').value,7600)), LC=num($('LC_ax').value,4400), NTpp=num($('NTpp_ax').value,2000);
+  const {kg,xs}=collectMassesAndPositions();
+  let Rk_sum=NTpp, Rb_sum=Math.max(0, mp-NTpp);
+  for(let i=0;i<kg.length;i++){ const W=kg[i], x=xs[i]; const Rb=W*(x/LB); const Rk=W-Rb; Rk_sum+=Rk; Rb_sum+=Rb; }
+  const R_front_from_pin=Rk_sum*(l2/LT), R_rear_from_pin=Rk_sum-R_front_from_pin;
+  const Ax1=NT10+R_front_from_pin, Ax2_group=NT20+R_rear_from_pin;
+  const perTrailerAxle=Rb_sum/axTl, perTractorRear=(axTr===3)?(Ax2_group/2):Ax2_group;
+  const cargoSum=kg.reduce((a,b)=>a+b,0), G_total=mT+mp+cargoSum;
+  $('G_total_ax').textContent=(G_total/1000).toFixed(2)+' т';
+  $('Ax1_ax').textContent=Math.round(Ax1).toLocaleString('ru-RU')+' кг';
+  $('Ax2_ax').textContent=(axTr===3? `${Math.round(perTractorRear).toLocaleString('ru-RU')} кг × 2` : Math.round(Ax2_group).toLocaleString('ru-RU')+' кг');
+  $('AxTl_ax').textContent=`${Math.round(Rb_sum).toLocaleString('ru-RU')} кг (≈ ${Math.round(perTrailerAxle).toLocaleString('ru-RU')} кг × ${axTl})`;
+  const warn=[]; if(Ax1>7500) warn.push('Передняя ось > 7.5 т'); if(axTr===2 && Ax2_group>11500) warn.push('Задняя ось тягача > 11.5 т'); if(axTr===3 && perTractorRear>11500) warn.push('Ось задней группы тягача > 11.5 т'); if(perTrailerAxle>10000) warn.push('Ось тележки прицепа > 10 т'); const w=$('axWarn_ax'); if(warn.length){ w.style.display='block'; w.textContent='Проверь нормативы: '+warn.join('; ');} else { w.style.display='none'; }
+}
+(function(){ const ids=['LT_ax','l2_ax','NT10_ax','NT20_ax','mp_ax','LA_ax','LB_ax','LC_ax','NTpp_ax','axTr_axle']; ids.forEach(id=>{ const el=$(id); if(el) el.addEventListener('input', calcAxles); }); const btn=$('recalcAxles'); if(btn) btn.addEventListener('click', calcAxles); })();
+const _recalc_orig=recalc; recalc=function(){ _recalc_orig(); calcAxles(); };
+const _selectTrailer_orig=selectTrailer; selectTrailer=function(id){ _selectTrailer_orig(id); syncAxleParamsFromTrailer(); calcAxles(); };
+
+/* ===================== Maps (Google/Yandex) ===================== */
+let _gmapsLoading=false, _gmapsLoaded=false, _ymapsLoading=false, _ymapsLoaded=false, _acFrom=null, _acTo=null, _fromPlaceId=null, _toPlaceId=null, _yaSuggestFrom=null, _yaSuggestTo=null;
+function loadGoogleMaps(key){
+  return new Promise((resolve,reject)=>{
+    if(_gmapsLoaded){ resolve(); return; }
+    if(_gmapsLoading){ const iv=setInterval(()=>{ if(_gmapsLoaded){ clearInterval(iv); resolve(); } }, 200); return; }
+    if(!key) return reject(new Error('Укажите API key'));
+    _gmapsLoading=true; const s=document.createElement('script'); s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`; s.async=true; s.defer=true; s.onload=()=>{ _gmapsLoaded=true; resolve(); }; s.onerror=()=>{ _gmapsLoading=false; reject(new Error('Не удалось загрузить Google Maps JS API')); }; document.head.appendChild(s);
+  });
+}
+function ensureAutocompleteGoogle(){
+  if(!_gmapsLoaded) return;
+  if(!_acFrom){ _acFrom=new google.maps.places.Autocomplete($('routeFrom'), { types:['(cities)'] }); _acFrom.addListener('place_changed', ()=>{ const p=_acFrom.getPlace(); _fromPlaceId=p?.place_id||null; }); }
+  if(!_acTo){ _acTo=new google.maps.places.Autocomplete($('routeTo'), { types:['(cities)'] }); _acTo.addListener('place_changed', ()=>{ const p=_acTo.getPlace(); _toPlaceId=p?.place_id||null; }); }
+}
+function routeGoogle(key, fromStr, toStr, avoidTolls, truckMode){
+  return loadGoogleMaps(key).then(()=>{
+    ensureAutocompleteGoogle();
+    return new Promise((resolve,reject)=>{
+      const svc=new google.maps.DirectionsService();
+      const origin=_fromPlaceId? {placeId:_fromPlaceId} : fromStr;
+      const destination=_toPlaceId? {placeId:_toPlaceId} : toStr;
+      svc.route({ origin, destination, travelMode:google.maps.TravelMode.DRIVING, provideRouteAlternatives:false, avoidFerries:true, avoidTolls, avoidHighways:false }, (res,status)=>{
+        if(status!=='OK') { reject(new Error('Directions error: '+status)); return; }
+        try{
+          const meters=res.routes[0].legs.reduce((s,leg)=>s+(leg.distance?.value||0),0); let km=meters/1000;
+          if(truckMode) km *= 1.12; // поправка на грузовые объезды
+          resolve(Math.round(km));
+        }catch(e){ reject(new Error('Ошибка обработки маршрута')); }
+      });
+    });
+  });
+}
+function loadYandexMaps(key){
+  return new Promise((resolve,reject)=>{
+    if(_ymapsLoaded){ resolve(); return; }
+    if(_ymapsLoading){ const iv=setInterval(()=>{ if(_ymapsLoaded){ clearInterval(iv); resolve(); } }, 200); return; }
+    if(!key) return reject(new Error('Укажите API key'));
+    _ymapsLoading=true;
+    const s=document.createElement('script');
+    s.src=`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=ru_RU`;
+    s.onload=()=>{ ymaps.ready(()=>{ _ymapsLoaded=true; resolve(); }); };
+    s.onerror=()=>{ _ymapsLoading=false; reject(new Error('Не удалось загрузить Яндекс.Карты JS API')); };
+    document.head.appendChild(s);
+  });
+}
+function ensureSuggestYandex(){
+  if(!_ymapsLoaded) return;
+  if(!_yaSuggestFrom) _yaSuggestFrom = new ymaps.SuggestView('routeFrom');
+  if(!_yaSuggestTo) _yaSuggestTo = new ymaps.SuggestView('routeTo');
+}
+function routeYandex(key, fromStr, toStr, avoidTolls, truckMode){
+  return loadYandexMaps(key).then(()=>{
+    ensureSuggestYandex();
+    return ymaps.route([fromStr, toStr], { avoidTrafficJams: false }).then(route=>{
+      const len = route.getLength(); let km = len/1000;
+      if(truckMode) km *= 1.12;
+      return Math.round(km);
+    });
+  });
+}
+function maybeInitMaps(){
+  if(app.distanceMode!=='maps') return;
+  const key=$('mapsKey').value.trim(); const provider=$('provider').value;
+  if(!key) return;
+  if(provider==='google') loadGoogleMaps(key).then(ensureAutocompleteGoogle).catch(()=>{});
+  else loadYandexMaps(key).then(ensureSuggestYandex).catch(()=>{});
+}
+function buildRoute(){
+  if(app.distanceMode!=='maps'){ alert('Включите режим «Через карты».'); return; }
+  const key=$('mapsKey').value.trim(); const fromStr=$('routeFrom').value.trim(); const toStr=$('routeTo').value.trim();
+  const avoidTolls=$('avoidTolls').checked; const truckMode=$('truckMode').checked;
+  if(!fromStr||!toStr){ alert('Заполните поля Откуда и Куда'); return; }
+  const provider=$('provider').value;
+  const runner = provider==='google' ? routeGoogle : routeYandex;
+  runner(key, fromStr, toStr, avoidTolls, truckMode)
+    .then(km=>{ $('distanceKm').value=String(km); app.distanceKm=km; saveState(); recalc(); })
+    .catch(err=>alert(err.message||String(err)));
+}
+
+/* ===================== Tests ===================== */
+function runTests(){
+  const out=$('testResults'); const results=[]; const approx=(a,b,e=2)=>Math.abs(a-b)<=e;
+  const pass=n=>results.push(`<div class='pass'>✔ ${n}</div>`); const fail=(n,m='')=>results.push(`<div class='fail'>✘ ${n}${m?': '+m:''}</div>`);
+  const backup=JSON.stringify(app);
+  try{
+    // ρ прямой/обратный
+    selectTrailer('MO0882_23');
+    let tb=$('tankBody'); let first=tb.querySelector('tr');
+    first.querySelector('.selType').value='diesel'; first.querySelector('.inpRho').value='0.84';
+    first.querySelector('.inpL').value='1000'; first.querySelector('.inpKg').value=''; recalc();
+    let kg=parseInt(first.querySelector('.inpKg').value); if(kg===840) pass('ρ: 1000 л ДТ → 840 кг'); else fail('ρ прямой', `получили ${kg}`);
+    first.querySelector('.inpKg').value='1200'; first.querySelector('.inpL').value=''; recalc();
+    let l=parseInt(first.querySelector('.inpL').value); if(approx(l,1429,2)) pass('ρ: 1200 кг ДТ → ~1429 л'); else fail('ρ обратный', `получили ${l}`);
+
+    // Пресет МО 0882 23 — capsLine содержит ТОЛЬКО лимиты
+    const caps=[...$('capsLine').textContent.matchAll(/(\d+)/g)].map(m=>parseInt(m[1]));
+    if(JSON.stringify(caps)===JSON.stringify([10365,6925,10450])) pass('Пресет МО 0882 23'); else fail('Пресет МО 0882 23', JSON.stringify(caps));
+
+    // Площадка ER 8977 23
+    selectTrailer('ER8977_23');
+    if($('platformSection').style.display==='block' && $('tankSection').style.display==='none') pass('Площадка рендерится'); else fail('Площадка рендер');
+
+    // Кастом прицеп
+    localStorage.setItem(LS_KEYS.custom, JSON.stringify([]));
+    $('m_name').value='МК 9999 23'; $('m_type').value='tanker'; $('m_axles').value='4'; $('m_tare').value='7800'; $('m_caps').value='10000/8000/7000';
+    saveModalTrailer();
+    const all=getAllTrailers(); if(all.find(x=>x.name==='МК 9999 23')) pass('Кастом добавлен'); else fail('Кастом не добавлен');
+
+    // Стоимость вручную
+    $('distanceMode').value='manual'; $('distanceKm').value='100'; $('ratePerKm').value='50'; $('trips').value='2'; recalc();
+    const costText=$('kpiCost').textContent.replace(/\D+/g,''); if(parseInt(costText)===10000) pass('Стоимость вручную считается'); else fail('Стоимость вручную', $('kpiCost').textContent);
+
+    // Осевые
+    $('recalcAxles')?.click();
+    const gtotal=$('G_total_ax').textContent; if(gtotal && gtotal!=='—') pass('Осевые: масса поезда рассчитана'); else fail('Осевые расчёты');
+  }catch(e){ fail('Исключение тестов', e.message); }
+  finally{ try{ app=JSON.parse(backup); renderCurrent(); }catch(_){} }
+  out.innerHTML=results.join('');
+}
+
+/* ===================== Boot ===================== */
+function boot(){
+  renderTrailerSelect();
+  loadState();
+  if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; app.tractorAxles=2; }
+  renderTrailerSelect(app.selectedTrailerId);
+  selectTrailer(app.selectedTrailerId);
+  bind();
+}
+window.addEventListener('load', ()=>{ boot(); syncAxleParamsFromTrailer(); calcAxles(); });
+</script>
 </body>
 </html>
