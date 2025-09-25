@@ -49,6 +49,8 @@
     .toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);opacity:0;pointer-events:none;transform:translateY(20px);transition:opacity .3s ease,transform .3s ease;z-index:40}
     .toast.show{opacity:1;transform:translateY(0)}
     .row.inline{display:flex;gap:8px;align-items:center}
+    #commonCargoRow.readonly label{color:var(--muted)}
+    #commonCargoRow.readonly input,#commonCargoRow.readonly select{cursor:not-allowed;background:#f3f4f6;color:#6b7280}
   </style>
 </head>
 <body>
@@ -166,41 +168,24 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
 
         <div id="tankSection">
-          <div id="singleCargoWrap" style="display:none;margin:6px 0 12px">
-            <div class="row cols-3">
-              <div>
-                <label>Тип груза</label>
-                <select id="singleType"></select>
-              </div>
-              <div>
-                <label>ADR</label>
-                <select id="singleAdr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select>
-              </div>
-              <div>
-                <label>ρ (кг/л)</label>
-                <input id="singleRho" type="number" step="0.001">
+          <div id="commonCargoRow" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin:6px 0 12px;align-items:end">
+            <div>
+              <label>Тип груза</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <select id="commonType" style="flex:1"></select>
+                <button class="btn" id="btnAddProduct" title="Добавить груз">+</button>
               </div>
             </div>
-            <div class="row cols-3" style="margin-top:8px">
-              <div>
-                <label>Объём, л</label>
-                <input id="singleL" type="number">
-              </div>
-              <div>
-                <label>Тонны, т</label>
-                <input id="singleT" type="number">
-              </div>
-              <div>
-                <label>Объём, м³</label>
-                <input id="singleM3" type="number">
-              </div>
+            <div>
+              <label>ADR</label>
+              <input id="commonAdr" placeholder="Не знаю">
+            </div>
+            <div>
+              <label>ρ (кг/л)</label>
+              <input id="commonRho" type="number" step="0.001">
             </div>
           </div>
-          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
-            <button class="btn" id="btnAddProduct">+ Добавить груз</button>
-          </div>
-          <div class="row cols-2" style="margin:6px 0 10px">
+          <div class="row cols-3" style="margin:6px 0 10px;align-items:end">
             <div>
               <label>Сколько везём (масса), т</label>
               <div style="display:flex;gap:8px">
@@ -215,12 +200,18 @@
                 <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
               </div>
             </div>
+            <div style="display:flex;align-items:flex-end;justify-content:flex-start">
+              <button class="btn" id="fillMax" style="width:100%">Заполнить по максимуму</button>
+            </div>
           </div>
-          <div class="small" style="margin:-6px 0 8px">При включённой галке «все отсеки — один груз» используйте общую строку сверху — плотность берётся из выбранного типа.</div>
+          <div class="row inline" style="gap:8px;align-items:center;margin:0 0 6px">
+            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox" checked> все отсеки — один груз</label>
+          </div>
+          <div class="small" id="singleCargoNote" style="margin:-4px 0 8px">При включённой галке используйте общий набор полей выше — ADR и ρ подставляются из выбранного груза, но их можно отредактировать.</div>
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Тонны, т</th><th>Объём, м³</th>
+                <th>Отсек</th><th class="colCargo">Тип груза</th><th class="colCargo">ADR</th><th class="colCargo">ρ (кг/л)</th><th>Объём, л</th><th>Тонны, т</th><th>Объём, м³</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
@@ -230,7 +221,6 @@
           <div class="small" id="fitSummary" style="margin-top:6px"></div>
 
           <div class="btns" style="margin-top:8px">
-            <button class="btn" id="fillMax">Заполнить по максимуму</button>
             <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
@@ -303,14 +293,14 @@
   <!-- Modal: продукт -->
   <div id="modalProduct" class="modal"><div class="sheet">
     <h3 style="margin-top:0">Добавить груз</h3>
-    <div class="row cols-1">
+    <div class="row" style="gap:12px">
       <div><label>Название</label><input id="mp_name" placeholder="Например, Новая смесь"></div>
       <div><label>Плотность ρ, кг/л</label><input id="mp_rho" type="number" step="0.001" placeholder="1.000"></div>
-      <div><label>ADR</label><select id="mp_adr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select></div>
+      <div><label>ADR</label><input id="mp_adr" placeholder="Не знаю"></div>
     </div>
-    <div class="btns" style="margin-top:10px">
-      <button class="btn primary" id="mp_save">Сохранить</button>
+    <div class="btns" style="margin-top:10px;justify-content:flex-end">
       <button class="btn" id="mp_cancel">Отмена</button>
+      <button class="btn primary" id="mp_save">Сохранить</button>
     </div>
   </div></div>
 
