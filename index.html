@@ -742,7 +742,8 @@ function bind(){
   $('provider').addEventListener('change', e=>{ app.provider=e.target.value; saveState(); maybeInitMaps(); });
   $('distanceMode').addEventListener('change', e=>{ app.distanceMode=e.target.value; $('mapsNote').style.display=(app.distanceMode==='maps')?'block':'none'; saveState(); maybeInitMaps(); });
 
-  $('resetPreset').addEventListener('click', ()=>selectTrailer(app.selectedTrailerId));
+  const resetBtn=$('resetPreset');
+  if(resetBtn) resetBtn.addEventListener('click', ()=>selectTrailer(app.selectedTrailerId));
   $('copyBrief').addEventListener('click', ()=>navigator.clipboard.writeText($('brief').value));
   $('addTrailer').addEventListener('click', openModal);
   $('addTruck').addEventListener('click', openTruckModal);
