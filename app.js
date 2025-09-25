@@ -148,7 +148,13 @@ function densityOptionsHtml(selectedKey){
 }
 function buildTankRows(state){
   const tb=$('tankBody'); tb.innerHTML='';
-  const caps=state.caps||[]; $('capsLine').textContent=caps.map((c,i)=>`#${i+1}: ${c} л`).join(', ');
+  const caps=state.caps||[];
+  const capsLine=$('capsLine');
+  if(capsLine){
+    capsLine.textContent='';
+    const wrapper=capsLine.closest('.small');
+    if(wrapper) wrapper.style.display='none';
+  }
   state.rows.forEach((row,idx)=>{
     const liters=isFinite(row?.liters)? row.liters : 0;
     const rho=isFinite(row?.rho)&&row?.rho>0? row.rho : 0.84;
@@ -348,31 +354,24 @@ function recalc(){
 
     const fitBox=$('fitSummary');
     if(fitBox){
-      let fitL=0, fitKg=0, leftL=0, leftKg=0, fitT=0, leftT=0, fitM3=0, leftM3=0;
+      let leftL=0, leftKg=0;
       (tstate.rows||[]).forEach((r,i)=>{
         const capL=tstate.caps[i]??0;
         const askL=r.liters||0;
-        const putL=Math.min(askL, capL);
         const overL=Math.max(0, askL-capL);
         const rho=r.rho||0;
-        const putKg=putL*rho;
-        const overKg=overL*rho;
-        fitL+=putL; leftL+=overL;
-        fitKg+=putKg; leftKg+=overKg;
-        const putT=putKg/1000, overT=overKg/1000;
-        fitT+=putT; leftT+=overT;
-        fitM3+=putL/1000; leftM3+=overL/1000;
+        leftL+=overL;
+        leftKg+=overL*rho;
       });
-      const parts=(tstate.caps||[]).map((cap,i)=>{
-        const rho=tstate.rows?.[i]?.rho||0;
-        const maxKg=cap*rho;
-        const maxT=maxKg/1000;
-        return `#${i+1}: ${cap} л (≈ ${Math.round(maxKg).toLocaleString('ru-RU')} кг, ${Number(maxT.toFixed(3)).toLocaleString('ru-RU', { minimumFractionDigits:3, maximumFractionDigits:3 })} т)`;
-      }).join('; ');
-      fitBox.innerHTML =
-        `Влезет по лимитам: <b>${fmtL(fitL)}</b> (≈ ${fmtKg(fitKg)}, ${fmtT(fitT)}, ${fmtM3(fitM3)}). `+
-        `Не влезло: <b>${fmtL(leftL)}</b> (≈ ${fmtKg(leftKg)}, ${fmtT(leftT)}, ${fmtM3(leftM3)}).`+
-        (parts?`<br>${parts}`:'');
+      const totalL=isFinite(sumL)?Math.max(0, sumL):0;
+      const totalT=isFinite(sumT)?Math.max(0, sumT):0;
+      const totalKg=totalT*1000;
+      const safeLeftL=isFinite(leftL)?Math.max(0, leftL):0;
+      const safeLeftKg=isFinite(leftKg)?Math.max(0, leftKg):0;
+      const summary=
+        `Всего: ${fmtL(totalL)} / ${fmtKg(totalKg)} / ${fmtT(totalT)} / ${fmtM3(totalL/1000)} · `+
+        `Не поместилось: ${fmtL(safeLeftL)} / ${fmtKg(safeLeftKg)} / ${fmtT(safeLeftKg/1000)} / ${fmtM3(safeLeftL/1000)}`;
+      fitBox.textContent=summary;
     }
 
   } else {
@@ -812,8 +811,10 @@ function runTests(){
     const liters=parseInt(first.querySelector('.inpL').value||'0',10);
     if(approx(liters,1429,2)) pass('ρ: 1.200 т ДТ → ≈1429 л'); else fail('ρ обратный', `получили ${liters}`);
 
-    const caps=[...$('capsLine').textContent.matchAll(/(\d+)/g)].map(m=>parseInt(m[1]));
-    if(JSON.stringify(caps)===JSON.stringify([10365,6925,10450])) pass('Пресет МО 0882 23'); else fail('Пресет МО 0882 23');
+    const capsNode=$('capsLine');
+    const capsWrapper=capsNode?.closest('.small');
+    if(capsNode?.textContent==='' && capsWrapper?.style.display==='none') pass('Пресет МО 0882 23');
+    else fail('Пресет МО 0882 23', `${capsNode?.textContent||''} / ${capsWrapper?.style.display||''}`);
 
     selectTrailer('MO0310_23');
     tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
