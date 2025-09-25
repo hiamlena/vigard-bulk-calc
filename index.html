@@ -166,35 +166,7 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
 
         <div id="tankSection">
-          <div class="row cols-3" style="margin:6px 0 10px">
-            <div>
-              <label>Сколько везём (масса), т</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalMassT" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
-              </div>
-            </div>
-            <div>
-              <label>Сколько везём (объём), м³</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolM3" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
-              </div>
-            </div>
-            <div>
-              <label>…или объём, л</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolL" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeL" style="white-space:nowrap">Распределить по литрам</button>
-              </div>
-            </div>
-          </div>
-          <div class="small" style="margin:-6px 0 8px">При включённой галке «все отсеки — один груз» используйте единую строку — плотность берётся из неё для всех отсеков.</div>
-          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
-            <button class="btn" id="btnAddProduct">+ Добавить груз</button>
-          </div>
-          <div id="singleCargoWrap" style="display:none;margin:12px 0">
+          <div id="singleCargoWrap" style="display:none;margin:6px 0 12px">
             <div class="row cols-3">
               <div>
                 <label>Тип груза</label>
@@ -224,10 +196,31 @@
               </div>
             </div>
           </div>
+          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
+            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
+            <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+          </div>
+          <div class="row cols-2" style="margin:6px 0 10px">
+            <div>
+              <label>Сколько везём (масса), т</label>
+              <div style="display:flex;gap:8px">
+                <input id="totalMassT" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
+              </div>
+            </div>
+            <div>
+              <label>Сколько везём (объём), м³</label>
+              <div style="display:flex;gap:8px">
+                <input id="totalVolM3" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
+              </div>
+            </div>
+          </div>
+          <div class="small" style="margin:-6px 0 8px">При включённой галке «все отсеки — один груз» используйте общую строку сверху — плотность берётся из выбранного типа.</div>
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Тонны, т</th>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Тонны, т</th><th>Объём, м³</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
@@ -482,7 +475,8 @@ const LS_KEYS = {
   products: 'vigard_custom_products_v1',
   trucks: 'vigard_custom_trucks_v1',
   truckAxlesMap: 'vigard_truck_axles_map_v1',
-  state:  'vigard_state_v7'
+  state:  'vigard_state_v8',
+  legacyState: 'vigard_state_v7'
 };
 
 /* ========== Products (add/custom) ========== */
@@ -532,17 +526,21 @@ function buildTankRows(state){
   state.rows.forEach((row,idx)=>{
     const tr=document.createElement('tr');
     tr.dataset.index=idx;
-    const tons=isFinite(row.kg)? (row.kg/1000).toFixed(3) : '0.000';
+    tr.dataset.lastInput=row.lastInput||'liters';
+    const tonsDisplay = isFinite(row.tons)? row.tons.toFixed(3) : (isFinite(row.kg)? (row.kg/1000).toFixed(3) : '');
     const litersDisplay = isFinite(row.liters)? (row.liters===0? '0':Math.round(row.liters)) : '';
     const rhoDisplay = isFinite(row.rho)? row.rho : '';
+    const m3Display = isFinite(row.m3)? row.m3.toFixed(3) : (isFinite(row.liters)? (row.liters/1000).toFixed(3) : '');
     tr.innerHTML=`
       <td><span class="pill">#${idx+1}</span><div class="cap">лимит ${caps[idx]??'—'} л</div></td>
       <td><select class="selType">${densityOptionsHtml(row.typeKey||'')}</select></td>
       <td><select class="selAdr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select></td>
       <td><input class="inpRho" type="number" step="0.001" value="${rhoDisplay}"></td>
       <td><input class="inpL" type="number" value="${litersDisplay}"></td>
-      <td><input class="inpT" type="number" readonly value="${tons}"></td>`;
+      <td><input class="inpT" type="number" value="${tonsDisplay}"></td>
+      <td><input class="inpM3" type="number" readonly value="${m3Display}"></td>`;
     if(isFinite(row.liters)) tr.dataset.exactL=row.liters;
+    else delete tr.dataset.exactL;
     tb.appendChild(tr);
     const adrSel=tr.querySelector('.selAdr');
     adrSel.value=row.adr||'Не знаю';
@@ -569,31 +567,51 @@ function resolveDensity(tr){
   const dict=getAllProducts().find(d=>d.key===typeKey);
   const rhoInp=tr.querySelector('.inpRho');
   let rho=parseFloat(rhoInp.value);
-  if((!isFinite(rho) || rho<=0) && dict?.rho>0){ rho=dict.rho; rhoInp.value=rho; }
-  if(!isFinite(rho) || rho<=0) rho=1;
+  const idx=parseInt(tr.dataset.index,10);
+  const row=app.trailerState?.rows?.[idx];
+  const manual=row?.rhoManual;
+  if((!isFinite(rho) || rho<=0)){
+    if(!manual && dict?.rho>0){ rho=dict.rho; if(rhoInp) rhoInp.value=dict.rho; }
+    else rho=NaN;
+  }
   return {rho, typeKey, dict};
 }
 
 function ensureTypeSelectedForDistribution(){
   const tstate=app.trailerState;
   if(!tstate || tstate.type!=='tanker') return true;
+  const msg='Укажите тип груза и плотность';
   if(tstate.allSame){
-    if(!($('singleType').value)){ showToast('Укажите тип груза, чтобы рассчитать по плотности'); return false; }
+    const typeKey=$('singleType').value;
+    if(!typeKey){ showToast(msg); return false; }
+    const rho=getSingleEffectiveRho();
+    if(!isFinite(rho) || rho<=0){ showToast(msg); return false; }
     return true;
   }
   const rows=[...$('tankBody').querySelectorAll('tr')];
-  for(const tr of rows){ if(!tr.querySelector('.selType').value){ showToast('Укажите тип груза, чтобы рассчитать по плотности'); return false; } }
+  for(const tr of rows){
+    const typeKey=tr.querySelector('.selType').value;
+    if(!typeKey){ showToast(msg); return false; }
+    const info=resolveDensity(tr);
+    if(!isFinite(info.rho) || info.rho<=0){ showToast(msg); return false; }
+  }
   return true;
 }
 
 function getSingleEffectiveRho(){
-  const tstate=app.trailerState; if(!tstate) return 1;
+  const tstate=app.trailerState; if(!tstate) return null;
   const single=tstate.single||defaultSingle();
   let rho=parseFloat($('singleRho').value);
   if(isFinite(rho) && rho>0){ single.rho=rho; return rho; }
   const dict=getAllProducts().find(d=>d.key===single.typeKey);
-  if(dict?.rho>0){ single.rho=dict.rho; single.rhoManual=false; $('singleRho').value=dict.rho; return dict.rho; }
-  single.rho=1; single.rhoManual=false; $('singleRho').value=single.typeKey?'1':''; return 1;
+  if(dict?.rho>0){
+    single.rho=dict.rho;
+    single.rhoManual=false;
+    $('singleRho').value=dict.rho;
+    return dict.rho;
+  }
+  single.rho=null;
+  return null;
 }
 
 function updateSingleTotalsFromValues(liters, kg, rho, typeKey, adr){
@@ -659,21 +677,30 @@ function handleSingleChange(source){
     if(raw===''){ liters=0; kg=0; tons=0; m3=0; }
     else {
       const val=parseFloat(raw);
-      if(isFinite(val) && val>=0){ liters=val; kg=rho*liters; tons=kg/1000; m3=liters/1000; }
+      if(isFinite(val)){
+        if(val<0){ liters=0; kg=0; tons=0; m3=0; $('singleL').value='0'; }
+        else { liters=val; kg=rho*liters; tons=kg/1000; m3=liters/1000; }
+      }
     }
   } else if(source==='T'){
     const raw=$('singleT').value.trim();
     if(raw===''){ liters=0; kg=0; tons=0; m3=0; }
     else {
       const val=parseFloat(raw);
-      if(isFinite(val) && val>=0){ tons=val; kg=tons*1000; liters=rho>0?kg/rho:0; m3=liters/1000; }
+      if(isFinite(val)){
+        if(val<0){ tons=0; kg=0; liters=0; m3=0; $('singleT').value='0'; }
+        else { tons=val; kg=tons*1000; liters=rho>0?kg/rho:0; m3=liters/1000; }
+      }
     }
   } else if(source==='M3'){
     const raw=$('singleM3').value.trim();
     if(raw===''){ liters=0; kg=0; tons=0; m3=0; }
     else {
       const val=parseFloat(raw);
-      if(isFinite(val) && val>=0){ m3=val; liters=m3*1000; kg=rho*liters; tons=kg/1000; }
+      if(isFinite(val)){
+        if(val<0){ m3=0; liters=0; kg=0; tons=0; $('singleM3').value='0'; }
+        else { m3=val; liters=m3*1000; kg=rho*liters; tons=kg/1000; }
+      }
     }
   }
   app.fitStats=null;
@@ -684,10 +711,11 @@ function applyDistributionMass(totalKg){
   if(app.trailerState?.type!=='tanker') return;
   const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')]; if(rows.length===0) return;
   const sameCargo=app.trailerState.allSame;
-  let baseRho=1;
+  let baseRho=null;
   const typeKey=sameCargo?$('singleType').value:null;
   const adrVal=sameCargo?($('singleAdr').value||'Не знаю'):null;
   if(sameCargo) baseRho=getSingleEffectiveRho();
+  if(sameCargo && (!isFinite(baseRho) || baseRho<=0)){ distributing=false; showToast('Укажите тип груза и плотность'); return; }
   distributing=true;
   let remainingKg=Math.max(totalKg,0);
   let filledKg=0, filledL=0;
@@ -703,22 +731,25 @@ function applyDistributionMass(totalKg){
       tr.querySelector('.inpRho').value=rho;
     } else {
       const info=resolveDensity(tr);
-      rho=info.rho||1;
+      rho=(isFinite(info.rho)&&info.rho>0)?info.rho:0;
     }
     if(i===0) fallbackRho=rho;
     const demandKg=Math.max(remainingKg,0);
-    const maxKg=cap*rho;
+    const maxKg=rho>0? cap*rho : 0;
     const useKg=Math.min(demandKg, maxKg);
     const useL=rho>0? useKg/rho : 0;
     const display=useL>0? roundLiters(useL):0;
-    tr.querySelector('.inpL').value = display>0?String(display):'0';
-    if(useL>0) tr.dataset.exactL=useL; else delete tr.dataset.exactL;
+    const inpL=tr.querySelector('.inpL'); if(inpL) inpL.value = display>0?String(display):'0';
+    const inpT=tr.querySelector('.inpT'); if(inpT) inpT.value='';
+    const inpM3=tr.querySelector('.inpM3'); if(inpM3) inpM3.value='';
+    tr.dataset.lastInput='liters';
+    tr.dataset.exactL=useL;
     remainingKg=Math.max(remainingKg-useKg,0);
     filledKg+=useKg; filledL+=useL;
     if(useKg>0) lastRho=rho;
   });
   distributing=false;
-  const rhoForLeft=(lastRho>0?lastRho:(fallbackRho||baseRho));
+  const rhoForLeft=(lastRho>0?lastRho:(fallbackRho||baseRho||0));
   const leftKg=Math.max(remainingKg,0);
   const leftL=(leftKg>0 && rhoForLeft>0)? leftKg/rhoForLeft : 0;
   app.fitStats={fitL:filledL, fitKg:filledKg, leftL, leftKg};
@@ -734,10 +765,11 @@ function applyDistributionLiters(totalLiters){
   let filledL=0, filledKg=0;
   let lastRho=0, fallbackRho=0;
   const sameCargo=app.trailerState.allSame;
-  let sharedRho=1;
+  let sharedRho=null;
   const typeKey=sameCargo?$('singleType').value:null;
   const adrVal=sameCargo?($('singleAdr').value||'Не знаю'):null;
   if(sameCargo) sharedRho=getSingleEffectiveRho();
+  if(sameCargo && (!isFinite(sharedRho) || sharedRho<=0)){ distributing=false; showToast('Укажите тип груза и плотность'); return; }
   rows.forEach((tr,i)=>{
     let rho;
     if(sameCargo){
@@ -747,15 +779,18 @@ function applyDistributionLiters(totalLiters){
       tr.querySelector('.inpRho').value=rho;
     } else {
       const info=resolveDensity(tr);
-      rho=info.rho||1;
+      rho=(isFinite(info.rho)&&info.rho>0)?info.rho:0;
     }
     if(i===0) fallbackRho=rho;
     const cap=app.trailerState.caps[i]||0;
     const demandL=Math.max(remainingL,0);
     const useL=Math.min(demandL, cap);
     const display=useL>0? roundLiters(useL):0;
-    tr.querySelector('.inpL').value = display>0?String(display):'0';
-    if(useL>0) tr.dataset.exactL=useL; else delete tr.dataset.exactL;
+    const inpL=tr.querySelector('.inpL'); if(inpL) inpL.value = display>0?String(display):'0';
+    const inpT=tr.querySelector('.inpT'); if(inpT) inpT.value='';
+    const inpM3=tr.querySelector('.inpM3'); if(inpM3) inpM3.value='';
+    tr.dataset.lastInput='liters';
+    tr.dataset.exactL=useL;
     remainingL=Math.max(remainingL-useL,0);
     const kg=useL*rho;
     filledL+=useL; filledKg+=kg;
@@ -763,7 +798,7 @@ function applyDistributionLiters(totalLiters){
   });
   distributing=false;
   const leftL=Math.max(remainingL,0);
-  const rhoForLeft=(lastRho>0?lastRho:(fallbackRho||sharedRho));
+  const rhoForLeft=(lastRho>0?lastRho:(fallbackRho||sharedRho||0));
   const leftKg=(leftL>0 && rhoForLeft>0)? leftL*rhoForLeft : 0;
   app.fitStats={fitL:filledL, fitKg:filledKg, leftL, leftKg};
   if(sameCargo){ updateSingleTotalsFromValues(filledL, filledKg, sharedRho, typeKey, adrVal||'Не знаю'); }
@@ -782,13 +817,6 @@ function handleDistributeM3(){
   if(!isFinite(totalM3) || totalM3<=0){ showToast('Введите число больше 0'); return; }
   applyDistributionLiters(totalM3*1000);
 }
-function handleDistributeL(){
-  if(!ensureTypeSelectedForDistribution()) return;
-  const totalL=num($('totalVolL').value, NaN);
-  if(!isFinite(totalL) || totalL<=0){ showToast('Введите число больше 0'); return; }
-  applyDistributionLiters(totalL);
-}
-
 /* ========== Platform table ========== */
 function buildPlatRows(state){
   const tb=$('platBody'); tb.innerHTML='';
@@ -817,24 +845,47 @@ let app={
   fitStats:null
 };
 function loadState(){
-  try{ const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null'); if(s) app=s; }catch(e){}
+  let loaded=null;
+  try{
+    const raw=localStorage.getItem(LS_KEYS.state);
+    if(raw) loaded=JSON.parse(raw);
+    else if(LS_KEYS.legacyState){
+      const legacy=localStorage.getItem(LS_KEYS.legacyState);
+      if(legacy) loaded=JSON.parse(legacy);
+    }
+  }catch(e){}
+  if(loaded) app=loaded;
   if(!app.fitStats) app.fitStats=null;
   if(app.trailerState?.type==='tanker'){
     if(!Array.isArray(app.trailerState.rows)) app.trailerState.rows=[];
     if(!Array.isArray(app.trailerState.caps)) app.trailerState.caps=[];
-    if(typeof app.trailerState.allSame!=='boolean') app.trailerState.allSame=false;
+    if(typeof app.trailerState.allSame!=='boolean') app.trailerState.allSame=true;
     if(!app.trailerState.single) app.trailerState.single=defaultSingle();
     else app.trailerState.single={...defaultSingle(), ...app.trailerState.single};
-    app.trailerState.rows=app.trailerState.rows.map(r=>({ ...defaultRow(), ...r }));
+    app.trailerState.rows=app.trailerState.rows.map(r=>{
+      const row={ ...defaultRow(), ...r };
+      if(!row.adr) row.adr='Не знаю';
+      if(!row.lastInput) row.lastInput='liters';
+      if(!isFinite(row.m3) && isFinite(row.liters)) row.m3=row.liters/1000;
+      if(!isFinite(row.tons) && isFinite(row.kg)) row.tons=row.kg/1000;
+      if((!isFinite(row.kg) || row.kg===0) && isFinite(row.liters) && isFinite(row.rho) && row.rho>0) row.kg=row.liters*row.rho;
+      return row;
+    });
+    if(!app.trailerState.single.adr) app.trailerState.single.adr='Не знаю';
+    if(!isFinite(app.trailerState.single.m3) && isFinite(app.trailerState.single.liters)) app.trailerState.single.m3=app.trailerState.single.liters/1000;
+    if(typeof app.trailerState.single.rhoManual!=='boolean') app.trailerState.single.rhoManual=false;
   }
 }
-function saveState(){ localStorage.setItem(LS_KEYS.state, JSON.stringify(app)); }
+function saveState(){
+  localStorage.setItem(LS_KEYS.state, JSON.stringify(app));
+  if(LS_KEYS.legacyState) localStorage.removeItem(LS_KEYS.legacyState);
+}
 
 /* ===================== Init/Render ===================== */
-function defaultRow(){ return {typeKey:'', adr:'Не знаю', rho:null, liters:0, kg:0, tons:0, rhoManual:false}; }
+function defaultRow(){ return {typeKey:'', adr:'Не знаю', rho:null, liters:0, kg:0, tons:0, m3:0, rhoManual:false, lastInput:'liters'}; }
 function defaultSingle(){ return {typeKey:'', adr:'Не знаю', rho:null, liters:0, kg:0, tons:0, m3:0, rhoManual:false}; }
 function tankerFromPreset(compartments){
-  return { caps:[...compartments], rows: compartments.map(()=>defaultRow()), allSame:false, single:defaultSingle() };
+  return { caps:[...compartments], rows: compartments.map(()=>defaultRow()), allSame:true, single:defaultSingle() };
 }
 function ensureRowsMatchCaps(state){
   const need=state.caps.length;
@@ -918,46 +969,115 @@ function recalc(){
       let rho=parseFloat(rhoInp.value);
       if((!isFinite(rho) || rho<=0)){
         if(!rowObj.rhoManual && dict?.rho>0){ rho=dict.rho; rhoInp.value=dict.rho; }
-        else { rho=1; }
+        else { rho=NaN; }
       }
-      rowObj.rho=rho;
+      rowObj.rho = (isFinite(rho) && rho>0) ? rho : null;
 
       const adrSel=tr.querySelector('.selAdr');
       if(adrSel && !adrSel.value) adrSel.value='Не знаю';
-      const adr=adrSel?.value||'Не знаю';
-      rowObj.adr=adr;
+      rowObj.adr=adrSel?.value||'Не знаю';
 
       const inpL=tr.querySelector('.inpL');
-      const rawL=inpL.value.trim();
-      let liters; const exact=tr.dataset.exactL;
-      if(exact!==undefined){
-        const parsedExact=parseFloat(exact);
-        if(isFinite(parsedExact)) liters=parsedExact;
+      const inpT=tr.querySelector('.inpT');
+      const inpM3=tr.querySelector('.inpM3');
+      let source=tr.dataset.lastInput||rowObj.lastInput||'liters';
+      if(source!=='tons' && source!=='liters') source='liters';
+      const rawL=inpL?.value?.trim()||'';
+      const rawT=inpT?.value?.trim()||'';
+      const effectiveRho=(isFinite(rowObj.rho)&&rowObj.rho>0)? rowObj.rho : (dict?.rho>0?dict.rho:NaN);
+      let liters=0, tons=0, kg=0, m3=0;
+      let empty=true;
+
+      if(source==='tons'){
+        if(rawT===''){
+          empty=true;
+          if(inpL) inpL.value='';
+          if(inpM3) inpM3.value='';
+          if(inpT) inpT.value='';
+          delete tr.dataset.exactL;
+        } else {
+          let parsed=parseFloat(rawT);
+          if(!isFinite(parsed)) parsed=0;
+          if(parsed<0){
+            warns.push(`Отсек #${i+1}: отрицательные значения`);
+            parsed=0;
+            if(inpT) inpT.value='0.000';
+          }
+          tons=parsed;
+          kg=tons*1000;
+          liters=(isFinite(effectiveRho)&&effectiveRho>0)? kg/effectiveRho : 0;
+          m3=liters/1000;
+          if(inpL) inpL.value = liters===0 ? '0' : String(roundLiters(liters));
+          if(inpT) inpT.value = tons.toFixed(3);
+          if(inpM3) inpM3.value = m3.toFixed(3);
+          tr.dataset.exactL=liters;
+          empty=false;
+        }
+      } else {
+        if(rawL===''){
+          empty=true;
+          if(inpT) inpT.value='';
+          if(inpM3) inpM3.value='';
+          delete tr.dataset.exactL;
+        } else {
+          let parsedExact;
+          if(tr.dataset.exactL!==undefined){
+            const exactVal=parseFloat(tr.dataset.exactL);
+            if(isFinite(exactVal)) parsedExact=exactVal;
+          }
+          if(parsedExact===undefined){
+            let parsed=parseFloat(rawL);
+            if(!isFinite(parsed)) parsed=0;
+            if(parsed<0){
+              warns.push(`Отсек #${i+1}: отрицательные значения`);
+              parsed=0;
+            }
+            parsedExact=parsed;
+          }
+          liters=parsedExact;
+          kg=(isFinite(effectiveRho)&&effectiveRho>0)? liters*effectiveRho : 0;
+          tons=kg/1000;
+          m3=liters/1000;
+          const displayLiters=roundLiters(liters);
+          if(inpL) inpL.value = String(displayLiters);
+          if(inpT) inpT.value = tons.toFixed(3);
+          if(inpM3) inpM3.value = m3.toFixed(3);
+          tr.dataset.exactL=liters;
+          empty=false;
+        }
       }
-      if(!isFinite(liters)){
-        liters=parseFloat(rawL);
-        if(!isFinite(liters) || rawL==="") liters=0;
-      }
-      if(liters<0){ warns.push(`Отсек #${i+1}: отрицательные значения`); liters=0; }
+
+      if(empty){ liters=0; kg=0; tons=0; m3=0; }
+
+      tr.dataset.lastInput=source;
+      rowObj.lastInput=source;
+      rowObj.liters=liters;
+      rowObj.kg=kg;
+      rowObj.tons=tons;
+      rowObj.m3=m3;
+      tstate.rows[i]=rowObj;
 
       const cap=tstate.caps[i]??Infinity;
       if(liters>cap+1e-6) warns.push(`Переполнение отсека #${i+1}: ${Math.round(liters)} л > лимита ${cap} л`);
 
-      const kg=liters*rho;
-      const tons=kg/1000;
-
-      inpL.value = rawL==="" ? "" : String(roundLiters(liters));
-      const tInput=tr.querySelector('.inpT'); if(tInput) tInput.value=tons.toFixed(3);
-
-      rowObj.liters=liters; rowObj.kg=kg; rowObj.tons=tons;
-      tstate.rows[i]=rowObj;
       sumL+=liters; sumKg+=kg;
     });
 
+    const fitL=isFinite(app.fitStats?.fitL)?app.fitStats.fitL:sumL;
+    const fitKg=isFinite(app.fitStats?.fitKg)?app.fitStats.fitKg:sumKg;
     const leftL=isFinite(app.fitStats?.leftL)?app.fitStats.leftL:0;
     const leftKg=isFinite(app.fitStats?.leftKg)?app.fitStats.leftKg:0;
     if(app.fitStats){ app.fitStats.fitL=sumL; app.fitStats.fitKg=sumKg; }
-    $('fitSummary').textContent = `Влезло: ${fmtL(sumL)} / ${fmtKg(sumKg)} / ${fmtT(sumKg/1000)} / ${fmtM3(sumL/1000)} · Остаток: ${fmtL(leftL)} / ${fmtKg(leftKg)} / ${fmtT(leftKg/1000)} / ${fmtM3(leftL/1000)}`;
+    const fitLine = `Влезло: ${fmtL(fitL)} / ${fmtKg(fitKg)} / ${fmtT(fitKg/1000)} / ${fmtM3(fitL/1000)} · Не поместилось: ${fmtL(leftL)} / ${fmtKg(leftKg)} / ${fmtT(leftKg/1000)} / ${fmtM3(leftL/1000)}`;
+    const parts=(tstate.caps||[]).map((cap,i)=>{
+      const rho=tstate.rows?.[i]?.rho||0;
+      const maxKg=isFinite(rho)&&rho>0?cap*rho:0;
+      const maxT=maxKg/1000;
+      return `#${i+1}: ${cap} л (≈ ${fmtKg(maxKg)} / ${fmtT(maxT)})`;
+    }).join('; ');
+    const fitBox=$('fitSummary');
+    if(parts) fitBox.innerHTML = `${fitLine}<br>${parts}`;
+    else fitBox.textContent = fitLine;
 
   } else {
     const tb=$('platBody'); const rows=[...tb.querySelectorAll('tr')];
@@ -982,21 +1102,30 @@ function recalc(){
 
   // brief
   const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
-  let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, `Итоги: ${(isNaN(sumL)?'-':Math.round(sumL)+' л')}, ${(sumKg/1000).toFixed(3)} т`];
+  const totalLine = isNaN(sumL)
+    ? `Итоги: —`
+    : `Итоги: ${fmtL(sumL)} / ${fmtKg(sumKg)} / ${fmtT(sumKg/1000)} / ${fmtM3(sumL/1000)}`;
+  let lines=[`Прицеп: ${t?.name||''} (${t?.type==='tanker'?'цистерна':'площадка'})`, `Тягач: ${app.tractorPlate||'—'} (${app.tractorAxles} оси)`, totalLine];
   if(tstate.type==='tanker'){
     if(tstate.allSame){
       const single=tstate.single||defaultSingle();
       const d=getAllProducts().find(x=>x.key===single.typeKey);
       const label=d?.label||single.typeKey||'—';
-      lines.push(`#1: ${label}, ADR ${single.adr||'Не знаю'}, ρ=${isFinite(single.rho)?single.rho:'—'}, ${Math.round(sumL)} л / ${(sumKg/1000).toFixed(3)} т / ${(sumL/1000).toFixed(3)} м³`);
+      const litersText=isNaN(sumL)?'—':fmtL(sumL);
+      const kgText=isNaN(sumKg)?'—':fmtKg(sumKg);
+      const tonsText=isNaN(sumKg)?'—':fmtT(sumKg/1000);
+      const m3Text=isNaN(sumL)?'—':fmtM3(sumL/1000);
+      lines.push(`#1: ${label}, ADR ${single.adr||'Не знаю'}, ρ=${isFinite(single.rho)?single.rho:'—'}, ${litersText} / ${kgText} / ${tonsText} / ${m3Text}`);
     } else {
       tstate.rows.forEach((r,i)=>{
         const d=getAllProducts().find(x=>x.key===r.typeKey);
         const label=d?.label||r.typeKey||'—';
-        const liters=isFinite(r.liters)?Math.round(r.liters):0;
-        const tons=isFinite(r.kg)?(r.kg/1000).toFixed(3):'0.000';
-        const m3=isFinite(r.liters)?(r.liters/1000).toFixed(3):'0.000';
-        lines.push(`#${i+1}: ${label}, ADR ${r.adr}, ρ=${isFinite(r.rho)?r.rho:'—'}, ${liters} л / ${tons} т / ${m3} м³`);
+        const litersText=isFinite(r.liters)?fmtL(r.liters):'—';
+        const kgVal=isFinite(r.kg)?r.kg: (isFinite(r.liters)&&isFinite(r.rho)? r.liters*r.rho : NaN);
+        const kgText=isFinite(kgVal)?fmtKg(kgVal):'—';
+        const tonsText=isFinite(kgVal)?fmtT(kgVal/1000):'—';
+        const m3Text=isFinite(r.liters)?fmtM3(r.liters/1000):'—';
+        lines.push(`#${i+1}: ${label}, ADR ${r.adr}, ρ=${isFinite(r.rho)?r.rho:'—'}, ${litersText} / ${kgText} / ${tonsText} / ${m3Text}`);
       });
     }
   } else { (tstate.masses||[]).forEach((kg,i)=>{ lines.push(`#${i+1}: ${(kg/1000).toFixed(3)} т`); }); }
@@ -1039,7 +1168,8 @@ function bind(){
     if(tr){
       const idx=parseInt(tr.dataset.index,10);
       if(e.target.classList.contains('inpRho') && app.trailerState?.rows?.[idx]) app.trailerState.rows[idx].rhoManual=true;
-      if(e.target.classList.contains('inpL')) delete tr.dataset.exactL;
+      if(e.target.classList.contains('inpL')){ tr.dataset.lastInput='liters'; delete tr.dataset.exactL; }
+      else if(e.target.classList.contains('inpT')){ tr.dataset.lastInput='tons'; delete tr.dataset.exactL; }
     }
     if(!distributing) app.fitStats=null;
     recalc();
@@ -1064,6 +1194,8 @@ function bind(){
       if(dict){ tr.querySelector('.inpRho').value=dict.rho; if(row){ row.rho=dict.rho; row.rhoManual=false; } }
       else if(row){ row.rho=null; row.rhoManual=false; tr.querySelector('.inpRho').value=''; }
       const adrSel=tr.querySelector('.selAdr'); if(adrSel && !adrSel.value) adrSel.value='Не знаю';
+      tr.dataset.lastInput='liters';
+      delete tr.dataset.exactL;
       app.fitStats=null;
       recalc();
     } else if(e.target.classList.contains('selAdr') || e.target.classList.contains('inpRho')){
@@ -1087,14 +1219,20 @@ function bind(){
     let totalLiters=0;
     [...tb.querySelectorAll('tr')].forEach((tr,i)=>{
       const cap=app.trailerState.caps[i]||0;
-      tr.querySelector('.inpL').value=cap>0?String(cap):'0';
-      if(cap>0){ tr.dataset.exactL=cap; totalLiters+=cap; } else delete tr.dataset.exactL;
+      tr.dataset.lastInput='liters';
+      const inpL=tr.querySelector('.inpL'); if(inpL) inpL.value=cap>0?String(cap):'0';
+      const inpT=tr.querySelector('.inpT'); if(inpT) inpT.value='';
+      const inpM3=tr.querySelector('.inpM3'); if(inpM3) inpM3.value='';
+      tr.dataset.exactL=cap>0?cap:0;
+      if(cap>0) totalLiters+=cap;
     });
     if(app.trailerState.allSame){
-      const rho=getSingleEffectiveRho();
+      const rhoVal=getSingleEffectiveRho();
+      const safeRho=(isFinite(rhoVal)&&rhoVal>0)?rhoVal:null;
       const typeKey=$('singleType').value||'';
       const adrVal=$('singleAdr').value||'Не знаю';
-      updateSingleTotalsFromValues(totalLiters, totalLiters*rho, rho, typeKey, adrVal);
+      const kgVal=safeRho?totalLiters*safeRho:0;
+      updateSingleTotalsFromValues(totalLiters, kgVal, safeRho, typeKey, adrVal);
     }
     recalc();
   });
@@ -1102,7 +1240,13 @@ function bind(){
     if(app.trailerState?.type!=='tanker') return;
     const tb=$('tankBody');
     app.fitStats=null;
-    [...tb.querySelectorAll('tr')].forEach((tr)=>{ tr.querySelector('.inpL').value=''; delete tr.dataset.exactL; const tInp=tr.querySelector('.inpT'); if(tInp) tInp.value='0.000'; });
+    [...tb.querySelectorAll('tr')].forEach((tr)=>{
+      tr.dataset.lastInput='liters';
+      const inpL=tr.querySelector('.inpL'); if(inpL) inpL.value='';
+      const inpT=tr.querySelector('.inpT'); if(inpT) inpT.value='';
+      const inpM3=tr.querySelector('.inpM3'); if(inpM3) inpM3.value='';
+      delete tr.dataset.exactL;
+    });
     if(app.trailerState.allSame){
       const typeKey=$('singleType').value||'';
       const adrVal=$('singleAdr').value||'Не знаю';
@@ -1113,7 +1257,6 @@ function bind(){
 
   $('btnDistributeMass').addEventListener('click', handleDistributeMass);
   $('btnDistributeM3').addEventListener('click', handleDistributeM3);
-  $('btnDistributeL').addEventListener('click', handleDistributeL);
 
   // модалка прицепа
   $('m_type').addEventListener('change', e=>{ const isPlat=e.target.value==='platform'; $('m_positions_wrap').style.display=isPlat?'block':'none'; $('m_caps_wrap').style.display=isPlat?'none':'block'; });
