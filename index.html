@@ -522,7 +522,13 @@ function densityOptionsHtml(selectedKey){
 }
 function buildTankRows(state){
   const tb=$('tankBody'); tb.innerHTML='';
-  const caps=state.caps||[]; $('capsLine').textContent=caps.map((c,i)=>`#${i+1}: ${c} л`).join(', ');
+  const caps=state.caps||[];
+  const capsLine=$('capsLine');
+  if(capsLine){
+    capsLine.textContent='';
+    const wrapper=capsLine.closest('.small');
+    if(wrapper) wrapper.style.display='none';
+  }
   state.rows.forEach((row,idx)=>{
     const tr=document.createElement('tr');
     tr.dataset.index=idx;
@@ -1132,21 +1138,16 @@ function recalc(){
       sumL+=liters; sumKg+=kg;
     });
 
-    const fitL=isFinite(app.fitStats?.fitL)?app.fitStats.fitL:sumL;
-    const fitKg=isFinite(app.fitStats?.fitKg)?app.fitStats.fitKg:sumKg;
-    const leftL=isFinite(app.fitStats?.leftL)?app.fitStats.leftL:0;
-    const leftKg=isFinite(app.fitStats?.leftKg)?app.fitStats.leftKg:0;
+    const totalL=isFinite(sumL)?sumL:0;
+    const totalKg=isFinite(sumKg)?sumKg:0;
+    const leftL=Math.max(0, isFinite(app.fitStats?.leftL)?app.fitStats.leftL:0);
+    const leftKg=Math.max(0, isFinite(app.fitStats?.leftKg)?app.fitStats.leftKg:0);
     if(app.fitStats){ app.fitStats.fitL=sumL; app.fitStats.fitKg=sumKg; }
-    const fitLine = `Влезло: ${fmtL(fitL)} / ${fmtKg(fitKg)} / ${fmtT(fitKg/1000)} / ${fmtM3(fitL/1000)} · Не поместилось: ${fmtL(leftL)} / ${fmtKg(leftKg)} / ${fmtT(leftKg/1000)} / ${fmtM3(leftL/1000)}`;
-    const parts=(tstate.caps||[]).map((cap,i)=>{
-      const rho=tstate.rows?.[i]?.rho||0;
-      const maxKg=isFinite(rho)&&rho>0?cap*rho:0;
-      const maxT=maxKg/1000;
-      return `#${i+1}: ${cap} л (≈ ${fmtKg(maxKg)} / ${fmtT(maxT)})`;
-    }).join('; ');
+    const totalLine=
+      `Всего: ${fmtL(totalL)} / ${fmtKg(totalKg)} / ${fmtT(totalKg/1000)} / ${fmtM3(totalL/1000)} · `+
+      `Не поместилось: ${fmtL(leftL)} / ${fmtKg(leftKg)} / ${fmtT(leftKg/1000)} / ${fmtM3(leftL/1000)}`;
     const fitBox=$('fitSummary');
-    if(parts) fitBox.innerHTML = `${fitLine}<br>${parts}`;
-    else fitBox.textContent = fitLine;
+    fitBox.textContent=totalLine;
 
   } else {
     const tb=$('platBody'); const rows=[...tb.querySelectorAll('tr')];
@@ -1557,9 +1558,11 @@ function runTests(){
     if(Math.abs(totalT-12)<=0.02) pass('Распределение по массе на 12 т'); else fail('Распределение по массе', totalT.toFixed(3)+' т');
     const leftKg=app.fitStats?.leftKg||0; if(Math.abs(leftKg)<1e-3) pass('Распределение: остаток массы 0'); else fail('Распределение остаток', leftKg.toFixed(1)+' кг');
 
-    // Пресет МО 0882 23 — capsLine содержит ТОЛЬКО лимиты
-    const caps=[...$('capsLine').textContent.matchAll(/(\d+)/g)].map(m=>parseInt(m[1]));
-    if(JSON.stringify(caps)===JSON.stringify([10365,6925,10450])) pass('Пресет МО 0882 23'); else fail('Пресет МО 0882 23', JSON.stringify(caps));
+    // Пресет МО 0882 23 — строка лимитов скрыта
+    const capsNode=$('capsLine');
+    const capsWrapper=capsNode?.closest('.small');
+    if(capsNode?.textContent==='' && capsWrapper?.style.display==='none') pass('Пресет МО 0882 23');
+    else fail('Пресет МО 0882 23', `${capsNode?.textContent} / ${capsWrapper?.style.display}`);
 
     // Площадка ER 8977 23
     selectTrailer('ER8977_23');

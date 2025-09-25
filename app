@@ -3,6 +3,16 @@ function $(id){ return document.getElementById(id); }
 function num(v,def=0){ const n=parseFloat(v); return isFinite(n)?n:def; }
 function fmtL(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' л':'—'; }
 function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' кг':'—'; }
+function fmtT(n){
+  if(!isFinite(n)) return '—';
+  const val=Number(n.toFixed(3));
+  return val.toLocaleString('ru-RU', { minimumFractionDigits:3, maximumFractionDigits:3 })+' т';
+}
+function fmtM3(n){
+  if(!isFinite(n)) return '—';
+  const val=Number(n.toFixed(3));
+  return val.toLocaleString('ru-RU', { minimumFractionDigits:3, maximumFractionDigits:3 })+' м³';
+}
 
 // ===== Data =====
 const BASE_PRODUCTS = [
@@ -138,7 +148,13 @@ function densityOptionsHtml(selectedKey){
 function buildTankRows(state){
   const tb=$('tankBody'); if(!tb) return;
   tb.innerHTML='';
-  const caps=state.caps||[]; const capsLine=$('capsLine'); if(capsLine) capsLine.textContent=caps.map((c,i)=>`#${i+1}: ${c} л`).join(', ');
+  const caps=state.caps||[];
+  const capsLine=$('capsLine');
+  if(capsLine){
+    capsLine.textContent='';
+    const wrapper=capsLine.closest('.small');
+    if(wrapper) wrapper.style.display='none';
+  }
   state.rows.forEach((row,idx)=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -326,33 +342,24 @@ function recalc(){
     });
 
     // --- Итог по влезанию ---
-    const capsLine=$('capsLine');
-    if(capsLine) capsLine.textContent = (tstate.caps || []).map((capL, i) => `#${i+1}: ${capL} л`).join(', ');
-
-    let fitL=0, fitKg=0, leftL=0, leftKg=0;
+    let leftL=0, leftKg=0;
     (tstate.rows||[]).forEach((r,i)=>{
       const capL=tstate.caps[i]??0;
       const askL=r.liters||0;
-      const putL=Math.min(askL,capL);
       const overL=Math.max(0,askL-capL);
-      fitL+=putL; fitKg+=putL*(r.rho||1);
       leftL+=overL; leftKg+=overL*(r.rho||1);
     });
-    const fitT=fitKg/1000, fitM3=fitL/1000, leftT=leftKg/1000, leftM3=leftL/1000;
-    const parts=(tstate.caps||[]).map((capL,i)=>{
-      const r=tstate.rows[i]||{};
-      const maxKg=capL*((r.rho||1));
-      const maxT=maxKg/1000;
-      return `#${i+1}: ${capL} л (≈ ${Math.round(maxKg)} кг, ${maxT.toFixed(2)} т)`;
-    });
+    const totalL=isFinite(sumL)?Math.max(0,sumL):0;
+    const totalKg=isFinite(sumKg)?Math.max(0,sumKg):0;
+    const totalT=totalKg/1000;
+    const totalM3=totalL/1000;
+    const safeLeftL=isFinite(leftL)?Math.max(0,leftL):0;
+    const safeLeftKg=isFinite(leftKg)?Math.max(0,leftKg):0;
     const fitBox = $('fitSummary');
     if (fitBox){
-      fitBox.innerHTML =
-        `Влезет по лимитам: <b>${Math.round(fitL).toLocaleString('ru-RU')} л</b> `+
-        `(≈ ${Math.round(fitKg).toLocaleString('ru-RU')} кг, ${fitT.toFixed(3)} т, ${fitM3.toFixed(3)} м³). `+
-        `Не влезло: <b>${Math.round(leftL).toLocaleString('ru-RU')} л</b> `+
-        `(≈ ${Math.round(leftKg).toLocaleString('ru-RU')} кг, ${leftT.toFixed(3)} т, ${leftM3.toFixed(3)} м³).<br>`+
-        parts.join('; ');
+      fitBox.textContent =
+        `Всего: ${fmtL(totalL)} / ${fmtKg(totalKg)} / ${fmtT(totalT)} / ${fmtM3(totalM3)} · `+
+        `Не поместилось: ${fmtL(safeLeftL)} / ${fmtKg(safeLeftKg)} / ${fmtT(safeLeftKg/1000)} / ${fmtM3(safeLeftL/1000)}`;
     }
 
   } else {
