@@ -1,5 +1,39 @@
 // ===== Helpers =====
 function $(id){ return document.getElementById(id); }
+function getTractorSelects(){
+  const primary=$("tractorSelect");
+  const fallback=$("truck");
+  const set=[];
+  if(primary) set.push(primary);
+  if(fallback && fallback!==primary) set.push(fallback);
+  return set;
+}
+function getTrailerSelects(){
+  const primary=$("trailerSelect");
+  const fallback=$("trailer");
+  const set=[];
+  if(primary) set.push(primary);
+  if(fallback && fallback!==primary) set.push(fallback);
+  return set;
+}
+function fillSelectOptions(selectEl, items, selectedValue){
+  if(!selectEl) return;
+  const prev=selectEl.value;
+  selectEl.innerHTML='';
+  items.forEach(item=>{
+    const opt=document.createElement('option');
+    opt.value=item.value;
+    opt.textContent=item.label;
+    selectEl.appendChild(opt);
+  });
+  let target=selectedValue;
+  const hasTarget=items.some(item=>item.value===target);
+  if(!hasTarget){
+    if(items.some(item=>item.value===prev)) target=prev;
+    else target=items[0]?.value||'';
+  }
+  if(typeof target==='string') selectEl.value=target;
+}
 function num(v,def=0){ const n=parseFloat(v); return isFinite(n)?n:def; }
 function fmtL(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' л':'—'; }
 function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' кг':'—'; }
@@ -124,15 +158,28 @@ function getAllTrailers(){
   return [...BASE_TRAILERS, ...custom];
 }
 function renderTrailerSelect(selectedId){
-  const sel = $('trailerSelect'); if(!sel) return;
-  sel.innerHTML='';
-  getAllTrailers().forEach(t=>{ const opt=document.createElement('option'); opt.value=t.id; opt.textContent=t.name; if(t.id===selectedId) opt.selected=true; sel.appendChild(opt); });
+  const selects=getTrailerSelects();
+  if(!selects.length) return;
+  const trailers=getAllTrailers();
+  const options=trailers.map(t=>({ value:t.id, label:t.name }));
+  let effective=selectedId;
+  if(!effective || !trailers.some(t=>t.id===effective)){
+    effective=trailers[0]?.id||'';
+  }
+  selects.forEach(sel=>fillSelectOptions(sel, options, effective));
+  app.selectedTrailerId = effective || null;
 }
 function renderTractorSelect(selected){
-  const sel=$('tractorSelect'); if(!sel) return;
-  sel.innerHTML='';
-  getAllTrucks().forEach(num=>{ const opt=document.createElement('option'); opt.value=num; opt.textContent=num; sel.appendChild(opt); });
-  if(selected){ sel.value=selected; }
+  const selects=getTractorSelects();
+  if(!selects.length) return;
+  const trucks=getAllTrucks();
+  const options=trucks.map(num=>({ value:num, label:num }));
+  let effective=selected;
+  if(!effective || !trucks.includes(effective)){
+    effective=trucks[0]||'';
+  }
+  selects.forEach(sel=>fillSelectOptions(sel, options, effective));
+  app.tractorPlate = effective || '';
 }
 function setTrailerInfo(t){
   const info=$('trailerInfo'); if(!info) return;
@@ -272,13 +319,20 @@ function selectTrailer(id){
   renderCurrent(); saveState();
 }
 function renderCurrent(){
-  const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
+  const trailers=getAllTrailers();
+  const t=trailers.find(x=>x.id===app.selectedTrailerId) || trailers[0] || null;
+  if(t){ app.selectedTrailerId=t.id; }
   setTrailerInfo(t);
   renderTrailerSelect(app.selectedTrailerId);
+
+  const trucks=getAllTrucks();
+  if(!app.tractorPlate || !trucks.includes(app.tractorPlate)){
+    app.tractorPlate=trucks[0]||'';
+  }
   renderTractorSelect(app.tractorPlate);
-  if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
-  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; if($('tractorAxles')) $('tractorAxles').value=String(app.tractorAxles||2);
-  if($('tractorSelect')) $('tractorSelect').value=app.tractorPlate;
+  const storedAx=getTruckAxles(app.tractorPlate);
+  app.tractorAxles=storedAx||app.tractorAxles||2;
+  if($('tractorAxles')) $('tractorAxles').value=String(app.tractorAxles||2);
 
   const provEl = $('provider'); if (provEl) provEl.value = app.provider||'google';
 
@@ -295,8 +349,9 @@ function renderCurrent(){
   if($('gmapsRow'))  $('gmapsRow').style.display  = isMaps ? 'grid'  : 'none';
   if($('gmapsNote')) $('gmapsNote').style.display = isMaps ? 'block' : 'none';
 
-  if(app.trailerState.type==='tanker'){ if($('tankSection')) $('tankSection').style.display='block'; if($('platformSection')) $('platformSection').style.display='none'; ensureRowsMatchCaps(app.trailerState); buildTankRows(app.trailerState); }
-  else { if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
+  if(app.trailerState?.type==='tanker'){ if($('tankSection')) $('tankSection').style.display='block'; if($('platformSection')) $('platformSection').style.display='none'; ensureRowsMatchCaps(app.trailerState); buildTankRows(app.trailerState); }
+  else if(app.trailerState?.type==='platform'){ if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
+  else { if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='none'; }
 
   recalc();
 }
@@ -305,7 +360,17 @@ function renderCurrent(){
 function recalc(){
   if(!app.trailerState){ return; }
   const tstate=app.trailerState; const warns=[]; let sumL=0, sumKg=0;
-  if($('tractorSelect')) app.tractorPlate=$('tractorSelect').value||app.tractorPlate;
+  const tractorSelects=getTractorSelects();
+  if(tractorSelects.length){
+    const active=document.activeElement;
+    let value='';
+    if(active && tractorSelects.includes(active)){
+      value=active.value;
+    }
+    if(!value) value=tractorSelects[0].value;
+    if(value) app.tractorPlate=value;
+    tractorSelects.forEach(sel=>{ if(sel.value!==app.tractorPlate) sel.value=app.tractorPlate; });
+  }
 
   if(tstate.type==='tanker'){
     const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
@@ -404,8 +469,23 @@ function recalc(){
 
 // ===== Events =====
 function bind(){
-  if($('trailerSelect')) $('trailerSelect').addEventListener('change', e=>selectTrailer(e.target.value));
-  if($('tractorSelect')) $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; if($('tractorAxles')) $('tractorAxles').value=String(ax); saveState(); recalc(); });
+  getTrailerSelects().forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      selectTrailer(e.target.value);
+      getTrailerSelects().forEach(other=>{ if(other!==sel) other.value=e.target.value; });
+    });
+  });
+  getTractorSelects().forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      app.tractorPlate=e.target.value;
+      const ax=getTruckAxles(app.tractorPlate)||2;
+      app.tractorAxles=ax;
+      if($('tractorAxles')) $('tractorAxles').value=String(ax);
+      saveState();
+      renderTractorSelect(app.tractorPlate);
+      recalc();
+    });
+  });
   if($('tractorAxles')) $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
 
   const provEl = $('provider');
@@ -546,7 +626,7 @@ function saveTruck(){
   localStorage.setItem(LS_KEYS.trucks, JSON.stringify(list));
   setTruckAxles(plate, axles);
   renderTractorSelect(plate);
-  if($('tractorSelect')) $('tractorSelect').value=plate;
+  getTractorSelects().forEach(sel=>{ sel.value=plate; });
   if($('tractorAxles')) $('tractorAxles').value=String(axles);
   app.tractorPlate=plate; app.tractorAxles=axles; saveState();
   closeTruckModal();
@@ -723,14 +803,26 @@ function runTests(){
 
 // ===== Boot =====
 function boot(){
-  renderTrailerSelect(); 
   loadState();
   if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // страховка
 
-  if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; app.tractorAxles=2; }
-  renderTrailerSelect(app.selectedTrailerId); 
-  selectTrailer(app.selectedTrailerId); 
+  const trailers=getAllTrailers();
+  if(trailers.length){
+    if(!app.selectedTrailerId || !trailers.some(t=>t.id===app.selectedTrailerId)){
+      app.selectedTrailerId=trailers[0].id;
+    }
+  }
+
+  const trucks=getAllTrucks();
+  if(trucks.length){
+    if(!app.tractorPlate || !trucks.includes(app.tractorPlate)){
+      app.tractorPlate=trucks[0];
+    }
+  }
+
+  selectTrailer(app.selectedTrailerId);
   bind();
   maybeInitMaps();
 }
-window.addEventListener('load', boot);
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();
