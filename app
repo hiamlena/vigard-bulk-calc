@@ -1,5 +1,17 @@
 // ===== Helpers =====
 function $(id){ return document.getElementById(id); }
+function uniqueSelectList(primary, fallback){
+  const list=[];
+  if(primary) list.push(primary);
+  if(fallback && fallback!==primary) list.push(fallback);
+  return list;
+}
+function getTractorSelects(){
+  return uniqueSelectList($('tractorSelect'), $('truck'));
+}
+function getTrailerSelects(){
+  return uniqueSelectList($('trailerSelect'), $('trailer'));
+}
 function num(v,def=0){ const n=parseFloat(v); return isFinite(n)?n:def; }
 function fmtL(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' л':'—'; }
 function fmtKg(n){ return isFinite(n)? Math.round(n).toLocaleString('ru-RU')+' кг':'—'; }
@@ -123,16 +135,40 @@ function getAllTrailers(){
   const custom = JSON.parse(localStorage.getItem(LS_KEYS.custom)||'[]');
   return [...BASE_TRAILERS, ...custom];
 }
+function fillSelectOptions(selectEl, options, selectedValue){
+  if(!selectEl) return;
+  const prev=selectEl.value;
+  selectEl.innerHTML='';
+  options.forEach(item=>{
+    const opt=document.createElement('option');
+    opt.value=item.value;
+    opt.textContent=item.label;
+    if(item.value===selectedValue) opt.selected=true;
+    selectEl.appendChild(opt);
+  });
+  const hasSelected=selectedValue && options.some(item=>item.value===selectedValue);
+  const fallbackValue=hasSelected?selectedValue:(options.some(item=>item.value===prev)?prev:(options[0]?.value||''));
+  if(fallbackValue!==undefined) selectEl.value=fallbackValue??'';
+}
 function renderTrailerSelect(selectedId){
-  const sel = $('trailerSelect'); if(!sel) return;
-  sel.innerHTML='';
-  getAllTrailers().forEach(t=>{ const opt=document.createElement('option'); opt.value=t.id; opt.textContent=t.name; if(t.id===selectedId) opt.selected=true; sel.appendChild(opt); });
+  const trailers=getAllTrailers();
+  const options=trailers.map(t=>({ value:t.id, label:t.name }));
+  let effective=selectedId;
+  if(!effective || !trailers.some(t=>t.id===effective)){
+    effective=trailers[0]?.id||'';
+  }
+  if(effective) app.selectedTrailerId=effective;
+  getTrailerSelects().forEach(sel=>fillSelectOptions(sel, options, effective));
 }
 function renderTractorSelect(selected){
-  const sel=$('tractorSelect'); if(!sel) return;
-  sel.innerHTML='';
-  getAllTrucks().forEach(num=>{ const opt=document.createElement('option'); opt.value=num; opt.textContent=num; sel.appendChild(opt); });
-  if(selected){ sel.value=selected; }
+  const trucks=getAllTrucks();
+  const options=trucks.map(num=>({ value:num, label:num }));
+  let effective=selected;
+  if(!effective || !trucks.includes(effective)){
+    effective=trucks[0]||'';
+  }
+  if(effective) app.tractorPlate=effective;
+  getTractorSelects().forEach(sel=>fillSelectOptions(sel, options, effective));
 }
 function setTrailerInfo(t){
   const info=$('trailerInfo'); if(!info) return;
@@ -265,6 +301,14 @@ function distributeByMassKg(totalKg){
 // ===== Init / Render =====
 function selectTrailer(id){
   const all=getAllTrailers();
+  if(all.length===0){
+    app.selectedTrailerId=null;
+    app.trailerState=null;
+    renderTrailerSelect(null);
+    renderCurrent();
+    saveState();
+    return;
+  }
   const t=all.find(x=>x.id===id) || all[0];
   app.selectedTrailerId=t.id;
   if(t.type==='tanker'){ app.trailerState={type:'tanker', ...tankerFromPreset(t.compartmentsLiters)}; }
@@ -277,8 +321,10 @@ function renderCurrent(){
   renderTrailerSelect(app.selectedTrailerId);
   renderTractorSelect(app.tractorPlate);
   if(!app.tractorPlate){ const allTr=getAllTrucks(); app.tractorPlate=allTr[0]; }
-  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2; if($('tractorAxles')) $('tractorAxles').value=String(app.tractorAxles||2);
-  if($('tractorSelect')) $('tractorSelect').value=app.tractorPlate;
+  const storedAx=getTruckAxles(app.tractorPlate); app.tractorAxles=storedAx||app.tractorAxles||2;
+  if($('tractorAxles')) $('tractorAxles').value=String(app.tractorAxles||2);
+  getTractorSelects().forEach(sel=>{ if(sel) sel.value=app.tractorPlate||''; });
+  getTrailerSelects().forEach(sel=>{ if(sel) sel.value=app.selectedTrailerId||''; });
 
   const provEl = $('provider'); if (provEl) provEl.value = app.provider||'google';
 
@@ -295,8 +341,21 @@ function renderCurrent(){
   if($('gmapsRow'))  $('gmapsRow').style.display  = isMaps ? 'grid'  : 'none';
   if($('gmapsNote')) $('gmapsNote').style.display = isMaps ? 'block' : 'none';
 
-  if(app.trailerState.type==='tanker'){ if($('tankSection')) $('tankSection').style.display='block'; if($('platformSection')) $('platformSection').style.display='none'; ensureRowsMatchCaps(app.trailerState); buildTankRows(app.trailerState); }
-  else { if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
+  if(app.trailerState && app.trailerState.type==='tanker'){
+    if($('tankSection')) $('tankSection').style.display='block';
+    if($('platformSection')) $('platformSection').style.display='none';
+    ensureRowsMatchCaps(app.trailerState);
+    buildTankRows(app.trailerState);
+  }
+  else if(app.trailerState && app.trailerState.type==='platform'){
+    if($('tankSection')) $('tankSection').style.display='none';
+    if($('platformSection')) $('platformSection').style.display='block';
+    buildPlatRows(app.trailerState);
+  }
+  else {
+    if($('tankSection')) $('tankSection').style.display='none';
+    if($('platformSection')) $('platformSection').style.display='none';
+  }
 
   recalc();
 }
@@ -305,7 +364,10 @@ function renderCurrent(){
 function recalc(){
   if(!app.trailerState){ return; }
   const tstate=app.trailerState; const warns=[]; let sumL=0, sumKg=0;
-  if($('tractorSelect')) app.tractorPlate=$('tractorSelect').value||app.tractorPlate;
+  const tractorSelects=getTractorSelects();
+  if(tractorSelects.length){ app.tractorPlate=tractorSelects[0].value||app.tractorPlate; }
+  getTractorSelects().forEach(sel=>{ if(sel) sel.value=app.tractorPlate||''; });
+  getTrailerSelects().forEach(sel=>{ if(sel && sel.value!==app.selectedTrailerId) sel.value=app.selectedTrailerId||''; });
 
   if(tstate.type==='tanker'){
     const tb=$('tankBody'); const rows=[...tb.querySelectorAll('tr')];
@@ -404,8 +466,26 @@ function recalc(){
 
 // ===== Events =====
 function bind(){
-  if($('trailerSelect')) $('trailerSelect').addEventListener('change', e=>selectTrailer(e.target.value));
-  if($('tractorSelect')) $('tractorSelect').addEventListener('change', e=>{ app.tractorPlate=e.target.value; const ax=getTruckAxles(app.tractorPlate)||2; app.tractorAxles=ax; if($('tractorAxles')) $('tractorAxles').value=String(ax); saveState(); recalc(); });
+  getTrailerSelects().forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const value=e.target.value;
+      selectTrailer(value);
+      getTrailerSelects().forEach(other=>{ if(other!==sel) other.value=app.selectedTrailerId||''; });
+      recalc();
+    });
+  });
+  getTractorSelects().forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      const value=e.target.value;
+      app.tractorPlate=value;
+      const ax=getTruckAxles(app.tractorPlate)||2;
+      app.tractorAxles=ax;
+      if($('tractorAxles')) $('tractorAxles').value=String(ax);
+      getTractorSelects().forEach(other=>{ if(other!==sel) other.value=value; });
+      saveState();
+      recalc();
+    });
+  });
   if($('tractorAxles')) $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
 
   const provEl = $('provider');
@@ -723,14 +803,23 @@ function runTests(){
 
 // ===== Boot =====
 function boot(){
-  renderTrailerSelect(); 
-  loadState();
-  if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // страховка
+  const init=()=>{
+    loadState();
+    if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // страховка
 
-  if(!app.selectedTrailerId){ const all=getAllTrailers(); app.selectedTrailerId=all[0].id; app.tractorAxles=2; }
-  renderTrailerSelect(app.selectedTrailerId); 
-  selectTrailer(app.selectedTrailerId); 
-  bind();
-  maybeInitMaps();
+    if(!app.selectedTrailerId){
+      const all=getAllTrailers();
+      if(all.length){
+        app.selectedTrailerId=all[0].id;
+        app.tractorAxles=app.tractorAxles||2;
+      }
+    }
+    renderTrailerSelect(app.selectedTrailerId);
+    selectTrailer(app.selectedTrailerId);
+    bind();
+    maybeInitMaps();
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 }
-window.addEventListener('load', boot);
+boot();
