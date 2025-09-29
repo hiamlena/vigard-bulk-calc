@@ -7,32 +7,31 @@
   <link rel="icon" href="data:,V" />
   <style>
     :root{--bg:#f7f7f8;--card:#ffffff;--text:#111827;--muted:#6b7280;--accent:#0ea5e9;--good:#16a34a;--bad:#dc2626;--warn:#ca8a04;--border:#e5e7eb}
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;background:var(--bg);color:var(--text)}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu; background:var(--bg); color:var(--text);} 
     .wrap{max-width:1200px;margin:0 auto;padding:24px}
     .title{display:flex;gap:12px;align-items:center;margin:8px 0 16px}
     .title h1{font-size:22px;margin:0}
     .muted{color:var(--muted);font-size:14px}
     .grid{display:grid;gap:16px}
     @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 16px rgba(0,0,0,.04)}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.04)}
     .card .c{padding:16px}
     label{display:block;font-size:13px;color:#374151;margin:6px 0}
     input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;outline:none}
-    input::placeholder{color:#9aa3af}
-    input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+    input:focus,textarea:focus,select:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(14,165,233,.15)}
     .row{display:grid;gap:12px}
-    @media(min-width:720px){.row.cols-2{grid-template-columns:1fr 1fr}.row.cols-3{grid-template-columns:1fr 1fr 1fr}.row.cols-4{grid-template-columns:repeat(4,1fr)}}
+    @media(min-width:720px){.row.cols-2{grid-template-columns:1fr 1fr} .row.cols-3{grid-template-columns:1fr 1fr 1fr} .row.cols-4{grid-template-columns:repeat(4,1fr)}}
     .btns{display:flex;gap:10px;flex-wrap:wrap}
     .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .small{font-size:12px;color:var(--muted)}
+    .small{font-size:12px;color:#6b7280}
     .kpi{display:grid;gap:12px;grid-template-columns:1fr 1fr}
     .kpi .box{border:1px solid var(--border);border-radius:12px;padding:12px}
     .kpi .t{color:var(--muted);font-size:12px}
     .kpi .v{font-weight:600;font-size:18px}
     .banner{border:1px dashed #facc15;background:#fffbeb;padding:12px;border-radius:12px}
     table{width:100%;border-collapse:separate;border-spacing:0 8px}
-    th,td{font-size:14px;vertical-align:middle}
+    th,td{font-size:14px}
     th{color:#374151;text-align:left}
     td>input,td>select{width:100%}
     .cap{font-size:12px;color:#6b7280}
@@ -43,14 +42,9 @@
     details.tests summary{cursor:pointer}
     .pass{color:#16a34a}
     .fail{color:#dc2626}
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px;z-index:20}
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px}
     .modal.open{display:flex}
     .modal>.sheet{background:#fff;border-radius:16px;padding:16px;max-width:640px;width:100%;border:1px solid var(--border)}
-    .toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.15);opacity:0;pointer-events:none;transform:translateY(20px);transition:opacity .3s ease,transform .3s ease;z-index:40}
-    .toast.show{opacity:1;transform:translateY(0)}
-    .row.inline{display:flex;gap:8px;align-items:center}
-    #commonCargoRow.readonly label{color:var(--muted)}
-    #commonCargoRow.readonly input,#commonCargoRow.readonly select{cursor:not-allowed;background:#f3f4f6;color:#6b7280}
   </style>
 </head>
 <body>
@@ -59,168 +53,102 @@
       <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#0369a1">V</div>
       <div>
         <h1>Вигард — калькулятор наливных грузов</h1>
-        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем.</div>
+        <div class="muted">Груз всегда застрахован. ДОПОГ соблюдаем. <b>Спирт</b>: временно не оформляем к перевозке.</div>
       </div>
     </div>
 
-    <!-- Конфигурация -->
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Конфигурация</h2>
       <div class="row cols-3">
-  <div>
-    <label>Тягач (оси)</label>
-    <select id="tractorAxles">
-      <option value="2">2</option>
-      <option value="3">3</option>
-    </select>
-  </div>
-
-  <div>
-    <label>Тягач (госномер)</label>
-    <div style="display:flex;gap:6px;align-items:center">
-      <select id="tractorSelect" style="flex:1"></select>
-      <button class="btn" id="addTruck" title="Добавить тягач">+</button>
-    </div>
-  </div>
-
-  <div>
-    <label>Прицеп (номер)</label>
-    <div style="display:flex;gap:6px;align-items:center">
-      <select id="trailerSelect" style="flex:1"></select>
-      <button class="btn" id="addTrailer" title="Добавить прицеп">+</button>
-    </div>
-  </div>
-</div>
-
-<div id="trailerInfo" class="small" style="margin-top:6px"></div>
-
+        <div>
+          <label>Тягач (оси)</label>
+          <select id="tractorAxles"><option value="2">2</option><option value="3">3</option></select>
+        </div>
+        <div>
+          <label>Тягач (госномер)</label>
+          <select id="tractorSelect"></select>
+        </div>
+        <div>
+          <label>Прицеп (номер)</label>
+          <select id="trailerSelect"></select>
+        </div>
+        <div class="btns" style="align-items:end">
+          <button class="btn" id="resetPreset">Сбросить к пресету</button>
+          <button class="btn" id="addTrailer">Добавить прицеп</button>
+        </div>
+      </div>
+      <div id="trailerInfo" class="small" style="margin-top:6px"></div>
     </div></div>
 
     <!-- Маршрут и стоимость -->
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Маршрут и стоимость</h2>
-
       <div class="row cols-3">
-        <div>
-          <label>Провайдер маршрута</label>
-          <select id="provider">
-            <option value="google">Google</option>
-            <option value="yandex">Яндекс</option>
-          </select>
-        </div>
         <div>
           <label>Режим расстояния</label>
           <select id="distanceMode">
-            <option value="manual">Вручную</option>
-            <option value="maps">Через карты</option>
+            <option value="manual" selected>Вручную</option>
+            <option value="gmaps">Google Maps</option>
           </select>
         </div>
         <div>
-          <label>API-ключ (для карт)</label>
-          <input id="mapsKey" placeholder="вставьте ключ API">
-        </div>
-      </div>
-
-      <!-- Поля маршрута ВСЕГДА видны -->
-      <div class="row cols-3" id="routeRow">
-        <div>
-          <label>Откуда (город)</label>
-          <input id="routeFrom" placeholder="Введите название">
-        </div>
-        <div>
-          <label>Куда (город)</label>
-          <input id="routeTo" placeholder="Введите название">
-        </div>
-        <div style="align-self:end" class="btns">
-          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
-          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="truckMode" type="checkbox" checked> грузовой режим*</label>
-          <button class="btn" id="btnRoute">Построить маршрут</button>
-        </div>
-      </div>
-      <div class="small" id="mapsNote" style="display:none;margin-top:6px">* «Грузовой режим» приблизительно учитывает объезды (добавляет ~12% к километражу). Для строгих ограничений можно интегрировать HERE/Yandex Truck API.</div>
-
-      <div class="row cols-3" style="margin-top:8px">
-        <div>
           <label>Расстояние, км (если вручную)</label>
-          <input id="distanceKm" type="number" placeholder="введите число">
+          <input id="distanceKm" type="number" placeholder="350">
         </div>
         <div>
           <label>Ставка, ₽/км</label>
-          <input id="ratePerKm" type="number" placeholder="например 120">
-        </div>
-        <div>
-          <label>Количество рейсов</label>
-          <input id="trips" type="number" value="1">
+          <input id="ratePerKm" type="number" placeholder="120">
         </div>
       </div>
-
+      <div class="row cols-3" id="gmapsRow" style="display:none">
+        <div>
+          <label>Откуда (город)</label>
+          <input id="routeFrom" placeholder="Кропоткин">
+        </div>
+        <div>
+          <label>Куда (город)</label>
+          <input id="routeTo" placeholder="Краснодар">
+        </div>
+        <div style="align-self:end" class="btns">
+          <input id="gmapsKey" placeholder="Google API key" class="small" style="width:56%">
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
+          <button class="btn" id="btnGmaps">Получить расстояние</button>
+        </div>
+      </div>
+      <div class="small" id="gmapsNote" style="display:none;margin-top:6px">Маршрут строится по данным Google Directions. Учитываем магистрали, но частные ограничения для грузовиков Google учитывает не везде. Для строгого соблюдения грузовых ограничений можно будет подключить иной провайдер (HERE/Yandex/ORS).</div>
       <div class="kpi" style="margin-top:12px">
         <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
         <div class="box"><div class="t">Ставка</div><div class="v" id="kpiRate">—</div></div>
         <div class="box"><div class="t">Рейсов</div><div class="v" id="kpiTrips">—</div></div>
         <div class="box"><div class="t">Итого стоимость</div><div class="v" id="kpiCost">—</div></div>
       </div>
+      <div class="row cols-3" style="margin-top:8px">
+        <div>
+          <label>Количество рейсов</label>
+          <input id="trips" type="number" value="1">
+        </div>
+      </div>
     </div></div>
 
     <div class="grid" style="margin-top:16px">
-      <!-- Цистерна / Площадка -->
       <div class="card"><div class="c">
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
-
+        <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
-          <div id="commonCargoRow" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin:6px 0 12px;align-items:end">
-            <div>
-              <label>Тип груза</label>
-              <div style="display:flex;gap:6px;align-items:center">
-                <select id="commonType" style="flex:1"></select>
-                <button class="btn" id="btnAddProduct" title="Добавить груз">+</button>
-              </div>
-            </div>
-            <div>
-              <label>ADR</label>
-              <select id="commonAdr"></select>
-            </div>
-            <div>
-              <label>ρ (кг/л)</label>
-              <input id="commonRho" type="number" step="0.001" min="0.001">
-            </div>
-          </div>
-          <div class="row cols-3" style="margin:6px 0 10px;align-items:end">
-            <div>
-              <label>Сколько везём (масса), т</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalMassT" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
-              </div>
-            </div>
-            <div>
-              <label>Сколько везём (объём), м³</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolM3" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
-              </div>
-            </div>
-          </div>
-          <div class="row inline" style="gap:8px;align-items:center;margin:0 0 6px">
-            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox" checked> все отсеки — один груз</label>
-            <button class="btn" id="fillMax">Заполнить по максимуму</button>
-          </div>
-          <div class="small" id="singleCargoNote" style="margin:-4px 0 8px">При включённой галке используйте общий набор полей выше — ADR и ρ подставляются из выбранного груза, но их можно отредактировать.</div>
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th class="colCargo">Тип груза</th><th class="colCargo">ADR</th><th class="colCargo">ρ (кг/л)</th>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
           </table>
-          <div class="small" id="fitSummary" style="margin-top:6px"></div>
-
+          <div class="small">Лимиты по отсекам: <span id="capsLine"></span></div>
           <div class="btns" style="margin-top:8px">
-            <button class="btn" id="clearAll">Очистить</button>
+            <button class="btn" id="addCompartment">+ Отсек</button>
+            <button class="btn" id="removeCompartment">− Отсек</button>
           </div>
         </div>
-
         <div id="platformSection" style="display:none">
           <table>
             <thead><tr><th>Позиция</th><th>Масса, кг</th></tr></thead>
@@ -229,23 +157,21 @@
         </div>
       </div></div>
 
-      <!-- Итоги -->
       <div class="card"><div class="c">
         <h3 style="margin:0 0 8px">Итоги и предупреждения</h3>
         <div class="kpi">
           <div class="box"><div class="t">Сумма литров</div><div class="v" id="sumL">—</div></div>
-          <div class="box"><div class="t">Сумма тонн</div><div class="v" id="sumT">—</div></div>
+          <div class="box"><div class="t">Сумма массы</div><div class="v" id="sumKg">—</div></div>
         </div>
         <ul id="warnList" class="small" style="margin-top:8px"></ul>
         <div style="margin-top:16px">
-          <div style="font-weight:600;margin-bottom:6px">Мини-бриф</div>
+          <div style="font-weight:600;margin-bottom:6px">Мини‑бриф</div>
           <textarea id="brief" rows="8" readonly></textarea>
         </div>
         <div class="btns" style="margin-top:8px">
-          <button class="btn" id="copyBrief">Скопировать мини-бриф</button>
+          <button class="btn" id="copyBrief">Скопировать мини‑бриф</button>
           <button class="btn primary" id="submitBtn">Оформить / Сохранить расчёт</button>
         </div>
-
         <details class="tests"><summary>Тесты (debug)</summary>
           <div class="btns" style="margin:8px 0"><button class="btn" id="runTests">Запустить тесты</button></div>
           <div id="testResults" class="small"></div>
@@ -254,7 +180,7 @@
     </div>
   </div>
 
-  <!-- Modal: прицеп -->
+  <!-- Modal: add trailer -->
   <div id="modal" class="modal"><div class="sheet">
     <h3 style="margin-top:0">Добавить прицеп</h3>
     <div class="row cols-2">
@@ -273,36 +199,7 @@
     </div>
   </div></div>
 
-  <!-- Modal: тягач -->
-  <div id="modalTruck" class="modal"><div class="sheet">
-    <h3 style="margin-top:0">Добавить тягач</h3>
-    <div class="row cols-2">
-      <div><label>Госномер</label><input id="mt_plate" placeholder="А 123 БВ 93"></div>
-      <div><label>Оси</label><select id="mt_axles"><option value="2" selected>2</option><option value="3">3</option></select></div>
-    </div>
-    <div class="btns" style="margin-top:10px">
-      <button class="btn primary" id="mt_save">Сохранить</button>
-      <button class="btn" id="mt_cancel">Отмена</button>
-    </div>
-  </div></div>
-
-  <!-- Modal: продукт -->
-  <div id="modalProduct" class="modal"><div class="sheet">
-    <h3 style="margin-top:0">Добавить груз</h3>
-    <div class="row" style="gap:12px">
-      <div><label>Название</label><input id="mp_name" placeholder="Например, Новая смесь"></div>
-      <div><label>Плотность ρ, кг/л</label><input id="mp_rho" type="number" step="0.001" placeholder="1.000"></div>
-      <div><label>ADR</label><input id="mp_adr" placeholder="Не знаю"></div>
-    </div>
-    <div class="btns" style="margin-top:10px;justify-content:flex-end">
-      <button class="btn" id="mp_cancel">Отмена</button>
-      <button class="btn primary" id="mp_save">Сохранить</button>
-    </div>
-  </div></div>
-
-  <div id="toast" class="toast"></div>
-
-  <!-- Axle calc -->
+  <!-- Axle calc block -->
   <div class="wrap" style="margin-top:8px">
     <div class="card"><div class="c">
       <h2 style="margin:0 0 12px">Расчёт нагрузок на оси</h2>
@@ -378,9 +275,6 @@
     </div></div>
   </div>
 
-<script src="shared/data.js"></script>
-<script src="app.js"></script>
-
-<div id="ver" style="position:fixed;right:10px;bottom:10px;font:12px system-ui;color:#6b7280;opacity:.8">build: <span id="bver"></span></div>
+  <script src="app.js"></script>
 </body>
 </html>
