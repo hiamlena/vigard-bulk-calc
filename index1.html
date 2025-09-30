@@ -158,42 +158,40 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
 
         <div id="tankSection">
-          <div class="cargoRow" id="commonCargoControls">
-            <div class="cargoField" style="flex:1 1 220px;min-width:200px">
-              <label class="small" for="cargoTypeCommon" style="margin:0">Тип груза</label>
-              <select id="cargoTypeCommon"></select>
+          <div id="globalCargoPanel">
+            <div class="cargoRow" id="commonCargoControls">
+              <div class="cargoField" style="flex:1 1 220px;min-width:200px">
+                <label class="small" for="cargoTypeCommon" style="margin:0">Тип груза:</label>
+                <select id="cargoTypeCommon"></select>
+              </div>
+              <button class="btn" id="btnAddProduct" type="button" aria-label="Добавить груз" title="Добавить груз">+</button>
+              <div class="cargoField" style="flex:0 0 140px">
+                <label class="small" for="rhoCommon" style="margin:0">ρ (кг/л)</label>
+                <input id="rhoCommon" type="number" step="0.001" placeholder="1.300">
+              </div>
             </div>
-            <button class="btn" id="btnAddProduct" type="button" aria-label="Добавить груз" title="Добавить груз">+</button>
-            <div class="cargoField" style="flex:0 0 140px">
-              <label class="small" for="rhoCommon" style="margin:0">ρ (кг/л)</label>
-              <input id="rhoCommon" type="number" step="0.001" placeholder="1.300">
-            </div>
-          </div>
-          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <div style="display:flex;gap:12px;align-items:center">
-              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="singleCargoMode" type="checkbox" checked> все отсеки — один груз</label>
-              <button class="btn" id="fillMax">Заполнить по максимуму</button>
-            </div>
-          </div>
-
-          <!-- ==== Панель пакетного распределения ==== -->
-          <div class="row cols-2" style="margin:6px 0 10px">
-            <div>
-              <label>Сколько везём (масса), т</label>
-              <div style="display:flex;gap:8px">
+            <!-- ==== Панель пакетного распределения ==== -->
+            <div class="row inline" style="margin:6px 0 10px;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;gap:8px;align-items:center;white-space:nowrap">
+                <label class="small" for="totalMassT" style="margin:0">Сколько везём (масса), т</label>
                 <input id="totalMassT" type="number" placeholder="Введите">
                 <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
               </div>
-            </div>
-            <div>
-              <label>Сколько везём (объём), м³</label>
-              <div style="display:flex;gap:8px">
+              <div style="display:flex;gap:8px;align-items:center;white-space:nowrap">
+                <label class="small" for="totalVolM3" style="margin:0">Сколько везём (объём), м³</label>
                 <input id="totalVolM3" type="number" placeholder="Введите">
                 <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
               </div>
             </div>
+            <!-- ==== /Панель пакетного распределения ==== -->
+
+            <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
+              <div style="display:flex;gap:12px;align-items:center">
+                <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox" checked> все отсеки — один груз</label>
+                <button class="btn" id="fillMax">Заполнить по максимуму</button>
+              </div>
+            </div>
           </div>
-          <!-- ==== /Панель пакетного распределения ==== -->
 
           <table>
             <thead>
@@ -205,15 +203,13 @@
           <div class="small" id="fitSummary" style="margin-top:6px"></div>
 
           <div class="btns" style="margin-top:8px">
-            <button class="btn" id="addCompartment">+ Отсек</button>
-            <button class="btn" id="removeCompartment">− Отсек</button>
             <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
 
         <div id="platformSection" style="display:none">
           <table>
-            <thead><tr><th>Позиция</th><th>Масса, кг</th></tr></thead>
+            <thead><tr><th>Позиция</th><th>Масса, т</th></tr></thead>
             <tbody id="platBody"></tbody>
           </table>
         </div>
