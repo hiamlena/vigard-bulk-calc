@@ -124,6 +124,16 @@ function setupCargoLayout(){
   ensureCargoStyles();
   const panel=$('globalCargoPanel');
   if(!panel) return;
+  if($('cargoTypeCommon')){
+    const addBtn=$('btnAddProduct');
+    if(addBtn){
+      addBtn.textContent='+';
+      addBtn.setAttribute('aria-label','Добавить груз');
+      addBtn.setAttribute('title','Добавить груз');
+    }
+    ensureSingleCargoSpacer();
+    return;
+  }
   if(!panel.dataset.cargoLayoutApplied){
     const tankSection=$('tankSection');
     if(tankSection && panel.parentElement===tankSection){
@@ -134,13 +144,12 @@ function setupCargoLayout(){
     }
     const typeBlock=$('cargoType')?.closest('div');
     const addBlock=$('btnAddProduct')?.closest('div');
-    const adrBlock=$('cargoAdr')?.closest('div');
     const rhoBlock=$('cargoRho')?.closest('div');
     const row=typeBlock?.parentElement;
-    if(row && typeBlock && addBlock && adrBlock && rhoBlock){
+    if(row && typeBlock && addBlock && rhoBlock){
       const inline=document.createElement('div');
       inline.className='cargoInline';
-      inline.append(typeBlock, addBlock, adrBlock, rhoBlock);
+      inline.append(typeBlock, addBlock, rhoBlock);
       row.appendChild(inline);
     }
     panel.dataset.cargoLayoutApplied='1';
@@ -263,7 +272,8 @@ function addCustomProduct(label, rho, adr){
   const list = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]');
   const existingIndex=list.findIndex(item=>item.key===key);
   if(existingIndex>=0) list.splice(existingIndex,1);
-  list.push({ key, label, rho, adr });
+  const normalizedAdr = (typeof adr==='string' && adr.trim()) ? adr.trim() : 'Не знаю';
+  list.push({ key, label, rho, adr: normalizedAdr });
   localStorage.setItem(LS_KEYS.products, JSON.stringify(list));
   return key;
 }
@@ -336,7 +346,7 @@ function buildTankRows(state){
   const single=!!app.singleCargo;
   if(thead){
     if(single) thead.innerHTML='<th>Отсек</th><th>Литры</th><th>Тонны</th><th>м³</th>';
-    else thead.innerHTML='<th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Литры</th><th>Тонны</th><th>м³</th>';
+    else thead.innerHTML='<th>Отсек</th><th>Тип груза</th><th>ρ (кг/л)</th><th>Литры</th><th>Тонны</th><th>м³</th>';
   }
   const caps=state.caps||[];
   state.rows.forEach((row,idx)=>{
@@ -358,7 +368,6 @@ function buildTankRows(state){
       tr.innerHTML=`
         <td><span class="pill">#${idx+1}</span><div class="cap">лимит ${capText} л</div></td>
         <td><select class="selType">${densityOptionsHtml(row.typeKey||'diesel')}</select></td>
-        <td><select class="selAdr"><option value="—">—</option><option value="3">3</option><option value="8">8</option></select></td>
         <td><input class="inpRho" type="number" step="0.001" value="${row.rho??0.84}"></td>
         <td><input class="inpL" type="number" step="0.001" value="${liters??0}"></td>
         <td><input class="inpT" type="number" step="0.001" value="${tons??0}"></td>
@@ -368,28 +377,26 @@ function buildTankRows(state){
     if(!single){
       const selType=tr.querySelector('.selType');
       if(selType) selType.value=row.typeKey||'diesel';
-      const selAdr=tr.querySelector('.selAdr');
-      if(selAdr) selAdr.value=row.adr||'—';
     }
   });
 }
 function ensureRowsMatchCaps(state){
   if(!Array.isArray(state.caps)) state.caps=[];
   const need=state.caps.length;
-  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'3', rho:0.84, liters:0, tons:0});
+  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, tons:0});
   while(state.rows.length>need) state.rows.pop();
 }
 function tankerFromPreset(compartments){
   const caps=Array.isArray(compartments)?compartments:[0];
-  return { caps:[...caps], rows: caps.map(()=>({typeKey:'diesel', adr:'3', rho:0.84, liters:0, tons:0})) };
+  return { caps:[...caps], rows: caps.map(()=>({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, tons:0})) };
 }
 function applyGlobalCargoToRows(){
   if(!app.trailerState || app.trailerState.type!=='tanker') return;
   const rows=app.trailerState.rows||[];
   rows.forEach(row=>{
     row.typeKey=app.singleCargoTypeKey||row.typeKey||'diesel';
-    const adrVal=['—','3','8'].includes(app.singleCargoAdr)?app.singleCargoAdr:'—';
-    row.adr=adrVal;
+    const adrCandidate=typeof app.singleCargoAdr==='string'?app.singleCargoAdr.trim():'';
+    row.adr=adrCandidate || row.adr || 'Не знаю';
     const rhoVal=num(app.singleCargoRho, row.rho||0);
     row.rho=(Number.isFinite(rhoVal) && rhoVal>0)?rhoVal:row.rho||0.84;
   });
@@ -405,7 +412,7 @@ function renderSingleCargoControls(){
     mode.checked=!!app.singleCargo;
     mode.disabled=!hasTanker;
   }
-  const typeSelect=$('cargoType');
+  const typeSelect=$('cargoTypeCommon')||$('cargoType');
   if(typeSelect){
     typeSelect.innerHTML=products.map(p=>`<option value="${p.key}">${p.label}</option>`).join('');
     if(!products.some(p=>p.key===app.singleCargoTypeKey)) app.singleCargoTypeKey=products[0]?.key||'';
@@ -414,23 +421,12 @@ function renderSingleCargoControls(){
   }
   const product=products.find(p=>p.key===app.singleCargoTypeKey);
   if(product && app.singleCargo){
-    const adrCandidate=String(product.adr||'—');
-    if(!['—','3','8'].includes(app.singleCargoAdr)) app.singleCargoAdr=adrCandidate;
+    const adrCandidate=String(product.adr||'Не знаю');
+    if(typeof app.singleCargoAdr!=='string' || !app.singleCargoAdr.trim()) app.singleCargoAdr=adrCandidate;
+    if(app.singleCargoAdr==='—') app.singleCargoAdr='Не знаю';
     if(!Number.isFinite(app.singleCargoRho) || app.singleCargoRho<=0) app.singleCargoRho=product.rho;
   }
-  const adrSelect=$('cargoAdr');
-  if(adrSelect){
-    const options=[
-      { value:'—', label:'Не знаю' },
-      { value:'3', label:'3' },
-      { value:'8', label:'8' }
-    ];
-    adrSelect.innerHTML=options.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join('');
-    if(!options.some(opt=>opt.value===app.singleCargoAdr)) app.singleCargoAdr='—';
-    adrSelect.value=app.singleCargoAdr||'—';
-    adrSelect.disabled=!hasTanker;
-  }
-  const rhoInput=$('cargoRho');
+  const rhoInput=$('rhoCommon')||$('cargoRho');
   if(rhoInput){
     if(!rhoInput.matches(':focus')){
       rhoInput.value=(Number.isFinite(app.singleCargoRho) && app.singleCargoRho>0)?String(app.singleCargoRho):'';
@@ -476,7 +472,7 @@ let app={
   routeTo:'',
   singleCargo:true,
   singleCargoTypeKey:'diesel',
-  singleCargoAdr:'3',
+  singleCargoAdr:'Не знаю',
   singleCargoRho:0.84,
   lastLoadRequest:null,
   totalMassT:'',
@@ -515,7 +511,8 @@ function normalizeLoadedState(raw){
   normalized.singleCargo = raw.singleCargo!==false;
   normalized.singleCargoTypeKey = (typeof raw.singleCargoTypeKey==='string' && raw.singleCargoTypeKey.trim()) ? raw.singleCargoTypeKey : 'diesel';
   const adrCandidate = typeof raw.singleCargoAdr==='string' ? raw.singleCargoAdr.trim() : '';
-  normalized.singleCargoAdr = ['—','3','8'].includes(adrCandidate) ? adrCandidate : '—';
+  const effectiveAdr = adrCandidate ? adrCandidate : 'Не знаю';
+  normalized.singleCargoAdr = effectiveAdr === '—' ? 'Не знаю' : effectiveAdr;
   const rhoNum = Number(raw.singleCargoRho);
   normalized.singleCargoRho = (Number.isFinite(rhoNum) && rhoNum>0) ? rhoNum : 0.84;
   const massVal = raw.totalMassT;
@@ -788,7 +785,7 @@ function recalc(){
       const tonsInput=tr.querySelector('.inpT');
       const m3Cell=tr.querySelector('.outM3');
       let typeKey=single?(app.singleCargoTypeKey||row.typeKey||'diesel'):(tr.querySelector('.selType')?.value||row.typeKey||'diesel');
-      let adr=single?(app.singleCargoAdr||row.adr||'—'):(tr.querySelector('.selAdr')?.value||row.adr||'—');
+      let adr=single?(app.singleCargoAdr||row.adr||'Не знаю'):(row.adr||'Не знаю');
       let rho=single?num(app.singleCargoRho, row.rho||0.84):num(tr.querySelector('.inpRho')?.value, row.rho||0.84);
       if(!single){
         const dict=products.find(d=>d.key===typeKey);
@@ -798,14 +795,17 @@ function recalc(){
             rho=dict.rho;
             setInputValue(rhoInp, rho, 3);
           }
-          const adrSel=tr.querySelector('.selAdr');
-          if(adrSel){
-            const isValidAdr=['—','3','8'].includes(adr);
-            if(!isValidAdr){
-              adr=String(dict.adr||'—');
-              adrSel.value=adr;
-            }
-          }
+          const dictAdr=String(dict.adr||'Не знаю');
+          if(!adr || adr==='—' || adr==='Не знаю') adr=dictAdr;
+        }
+      }
+      if(single && (!adr || adr==='—')){
+        const dict=products.find(d=>d.key===typeKey);
+        if(dict){
+          const dictAdr=String(dict.adr||'Не знаю');
+          adr=dictAdr;
+        } else if(!adr) {
+          adr='Не знаю';
         }
       }
       if(!isFinite(rho) || rho<=0){
@@ -1017,11 +1017,11 @@ function bind(){
         const d = getAllProducts().find(x=>x.key===typeKey);
         if(d){
           const rhoInp = tr.querySelector('.inpRho');
-          const adrSel = tr.querySelector('.selAdr');
           if(rhoInp && !rhoInp.value) rhoInp.value = d.rho;
-          if(adrSel){
-            const val=adrSel.value;
-            if(!['—','3','8'].includes(val)) adrSel.value=String(d.adr||'—');
+          const rows=getTankRows();
+          const idx=rows.indexOf(tr);
+          if(idx>=0 && app.trailerState?.rows?.[idx]){
+            app.trailerState.rows[idx].adr=String(d.adr||'Не знаю');
           }
           recalc();
         }
@@ -1094,13 +1094,14 @@ function bind(){
     renderSingleCargoControls();
     recalc();
   });
-  const cargoType=$('cargoType');
+  const cargoType=$('cargoTypeCommon')||$('cargoType');
   if(cargoType) cargoType.addEventListener('change', e=>{
     app.singleCargoTypeKey=e.target.value;
     app.lastLoadRequest=null;
     const prod=getAllProducts().find(p=>p.key===app.singleCargoTypeKey);
     if(prod){
-      app.singleCargoAdr=String(prod.adr||'—');
+      const adrStr=String(prod.adr||'Не знаю').trim();
+      app.singleCargoAdr=adrStr==='—'?'Не знаю':adrStr;
       app.singleCargoRho=prod.rho;
     }
     if(app.singleCargo){
@@ -1110,18 +1111,7 @@ function bind(){
     renderSingleCargoControls();
     recalc();
   });
-  const cargoAdr=$('cargoAdr');
-  if(cargoAdr) cargoAdr.addEventListener('change', e=>{
-    const val=String(e.target.value||'').trim();
-    app.singleCargoAdr=['—','3','8'].includes(val)?val:'—';
-    app.lastLoadRequest=null;
-    if(app.singleCargo){
-      applyGlobalCargoToRows();
-      recalc();
-    }
-    renderSingleCargoControls();
-  });
-  const cargoRho=$('cargoRho');
+  const cargoRho=$('rhoCommon')||$('cargoRho');
   if(cargoRho){
     cargoRho.addEventListener('input', e=>{
       const val=parseFloat(e.target.value);
@@ -1192,8 +1182,6 @@ function openProductModal(){
   if(!modal) return;
   const form=$('mp_form');
   if(form) form.reset();
-  const adr=$('mp_adr');
-  if(adr) adr.value='—';
   if(productModalKeyHandler){
     document.removeEventListener('keydown', productModalKeyHandler);
     productModalKeyHandler=null;
@@ -1227,9 +1215,7 @@ function saveProductFromModal(event){
   const rhoStr=(rhoInput?.value||'').trim();
   const rho=parseFloat(rhoStr);
   if(!Number.isFinite(rho) || rho<=0){ showToast('Плотность должна быть >0 кг/л', 'warn'); rhoInput?.focus(); return; }
-  const adrSelect=$('mp_adr');
-  const adrValue=(adrSelect?.value||'—').trim();
-  if(!['—','3','8'].includes(adrValue)){ showToast('Выберите ADR из списка', 'warn'); adrSelect?.focus(); return; }
+  const adrValue='Не знаю';
   const rhoRounded=Number(rho.toFixed(3));
   const key=addCustomProduct(normalizedName, rhoRounded, adrValue);
   app.singleCargoTypeKey=key;
@@ -1244,7 +1230,9 @@ function applyProductSelectionAfterSave(product){
   app.lastLoadRequest=null;
   const key=product.key;
   const rhoVal=Number(product.rho);
-  const adrStr=String(product.adr||'—');
+  let adrStr=String(product.adr||'Не знаю').trim();
+  if(!adrStr) adrStr='Не знаю';
+  if(adrStr==='—') adrStr='Не знаю';
   if(app.trailerState?.type==='tanker'){
     if(app.singleCargo){
       app.singleCargoAdr=adrStr;

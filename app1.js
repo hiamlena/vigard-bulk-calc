@@ -71,8 +71,12 @@ function getAllProducts(){
 function addCustomProduct(label, rho, adr){
   const key = ('custom_'+label).toLowerCase().replace(/\s+/g,'_').replace(/[^\wа-яё_-]/gi,'');
   const list = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]');
-  list.push({ key, label, rho, adr });
+  const normalizedAdr = (typeof adr==='string' && adr.trim()) ? adr.trim() : 'Не знаю';
+  const existingIndex=list.findIndex(item=>item.key===key);
+  if(existingIndex>=0) list.splice(existingIndex,1);
+  list.push({ key, label, rho, adr: normalizedAdr });
   localStorage.setItem(LS_KEYS.products, JSON.stringify(list));
+  return key;
 }
 
 // === Trucks
@@ -144,7 +148,6 @@ function buildTankRows(state){
     tr.innerHTML=`
       <td><span class="pill">#${idx+1}</span><div class="cap">лимит ${caps[idx]??'—'} л</div></td>
       <td><select class="selType">${densityOptionsHtml(row.typeKey||'diesel')}</select></td>
-      <td><select class="selAdr"><option>Не знаю</option><option>3</option><option>8</option><option>—</option></select></td>
       <td><input class="inpRho" type="number" step="0.001" value="${row.rho??0.84}"></td>
       <td><input class="inpL" type="number" value="${row.liters??0}"></td>
       <td><input class="inpKg" type="number" value="${row.kg??0}"></td>
@@ -155,11 +158,11 @@ function buildTankRows(state){
 }
 function ensureRowsMatchCaps(state){
   const need=state.caps.length;
-  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'3', rho:0.84, liters:0, kg:0});
+  while(state.rows.length<need) state.rows.push({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, kg:0});
   while(state.rows.length>need) state.rows.pop();
 }
 function tankerFromPreset(compartments){
-  return { caps:[...compartments], rows: compartments.map(()=>({typeKey:'diesel', adr:'3', rho:0.84, liters:0, kg:0})) };
+  return { caps:[...compartments], rows: compartments.map(()=>({typeKey:'diesel', adr:'Не знаю', rho:0.84, liters:0, kg:0})) };
 }
 
 // === Platform table
@@ -184,11 +187,13 @@ let app={
   ratePerKm:0,
   trips:1,
   routeFrom:'',
-  routeTo:''
+  routeTo:'',
+  cargoTypeKey:'diesel',
+  cargoRho:0.84
 };
 if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // миграция на новое имя
 
-function loadState(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null'); if(s) app=s; }catch(e){} }
+function loadState(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEYS.state)||'null'); if(s) app={...app, ...s}; }catch(e){} }
 function saveState(){ localStorage.setItem(LS_KEYS.state, JSON.stringify(app)); }
 
 // ===== Bulk distribute helpers =====
@@ -290,7 +295,74 @@ function renderCurrent(){
   else if(app.trailerState?.type==='platform'){ if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
   else { if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='none'; }
 
+  renderCargoControls();
+  applyCargoSelectionToRows();
+
   recalc();
+}
+
+function renderCargoControls(){
+  const products=getAllProducts();
+  const select=$('cargoTypeCommon');
+  if(!products.length){
+    if(select){
+      select.innerHTML='<option value="">—</option>';
+      select.value='';
+      select.disabled=true;
+    }
+    const rhoInputEmpty=$('rhoCommon');
+    if(rhoInputEmpty){
+      rhoInputEmpty.value='';
+      rhoInputEmpty.disabled=true;
+    }
+    const addBtnEmpty=$('btnAddProduct');
+    if(addBtnEmpty) addBtnEmpty.disabled=true;
+    return;
+  }
+  if(!products.some(p=>p.key===app.cargoTypeKey)) app.cargoTypeKey=products[0]?.key||'';
+  const isTanker=app.trailerState?.type==='tanker';
+  if(select){
+    select.innerHTML=products.map(p=>`<option value="${p.key}">${p.label}</option>`).join('');
+    if(app.cargoTypeKey) select.value=app.cargoTypeKey;
+    select.disabled=!isTanker;
+  }
+  const rhoInput=$('rhoCommon');
+  if(rhoInput){
+    if(!rhoInput.matches(':focus')){
+      rhoInput.value = Number.isFinite(app.cargoRho) ? app.cargoRho : '';
+    }
+    rhoInput.disabled=!isTanker;
+  }
+  const addBtn=$('btnAddProduct');
+  if(addBtn){
+    addBtn.disabled=!isTanker;
+    addBtn.textContent='+';
+    addBtn.setAttribute('aria-label','Добавить груз');
+    addBtn.setAttribute('title','Добавить груз');
+  }
+}
+
+function applyCargoSelectionToRows(forceAll=false){
+  if(app.trailerState?.type!=='tanker') return;
+  const rowsEl=$('tankBody') ? [...$('tankBody').querySelectorAll('tr')] : [];
+  const products=getAllProducts();
+  const product=products.find(p=>p.key===app.cargoTypeKey);
+  const adr=product?String(product.adr||'Не знаю'):'Не знаю';
+  const rhoVal=Number.isFinite(app.cargoRho)?app.cargoRho:product?.rho;
+  const same=$('chkAllSame')?.checked;
+  rowsEl.forEach((tr,i)=>{
+    if(i===0 || same || forceAll){
+      const sel=tr.querySelector('.selType');
+      if(sel && app.cargoTypeKey) sel.value=app.cargoTypeKey;
+      const rhoInp=tr.querySelector('.inpRho');
+      if(rhoInp && Number.isFinite(rhoVal)) rhoInp.value=rhoVal;
+      if(app.trailerState.rows?.[i]){
+        if(app.cargoTypeKey) app.trailerState.rows[i].typeKey=app.cargoTypeKey;
+        if(Number.isFinite(rhoVal)) app.trailerState.rows[i].rho=rhoVal;
+        app.trailerState.rows[i].adr=adr;
+      }
+    }
+  });
 }
 
 // ===== Recalc =====
@@ -315,14 +387,11 @@ function recalc(){
       const typeKey=tr.querySelector('.selType').value;
       const dict=getAllProducts().find(d=>d.key===typeKey) || getAllProducts()[0];
 
-      // авто-подстановка ADR и ρ
       const rhoInp=tr.querySelector('.inpRho');
-      if(!rhoInp.value) rhoInp.value = dict.rho;
-      const adrSel=tr.querySelector('.selAdr');
-      if(adrSel && adrSel.value==='Не знаю'){ const opt=[...adrSel.options].find(o=>o.value===String(dict.adr)); if(opt) adrSel.value=opt.value; }
+      if(!rhoInp.value && dict) rhoInp.value = dict.rho;
 
-      const rho=num(rhoInp.value, dict.rho);
-      const adr=adrSel.value;
+      const rho=num(rhoInp.value, dict?.rho);
+      const adr=String(dict?.adr||app.trailerState?.rows?.[i]?.adr||'Не знаю');
       let liters=num(tr.querySelector('.inpL').value, NaN);
       let kg=num(tr.querySelector('.inpKg').value, NaN);
 
@@ -465,11 +534,18 @@ function bind(){
       const d = getAllProducts().find(x=>x.key===typeKey);
       if(d){
         const rhoInp = tr.querySelector('.inpRho');
-        const adrSel = tr.querySelector('.selAdr');
         if(rhoInp && !rhoInp.value) rhoInp.value = d.rho;
-        if(adrSel){
-          const opt=[...adrSel.options].find(o=>o.value===String(d.adr));
-          if(opt) adrSel.value=opt.value;
+        const rows=[...tankBodyEl.querySelectorAll('tr')];
+        const idx=rows.indexOf(tr);
+        if(idx===0){
+          app.cargoTypeKey=typeKey;
+          if(Number.isFinite(d.rho)) app.cargoRho=d.rho;
+          renderCargoControls();
+        }
+        if($('chkAllSame')?.checked){
+          applyCargoSelectionToRows(true);
+        } else if(idx>=0 && app.trailerState?.rows?.[idx]){
+          app.trailerState.rows[idx].adr=String(d.adr||'Не знаю');
         }
         recalc();
       }
@@ -478,14 +554,10 @@ function bind(){
 
   const chkAll = $('chkAllSame');
   if (chkAll) chkAll.addEventListener('change', (e)=>{
-    if(!e.target.checked) return;
-    const tb=$('tankBody'); const first=tb?.querySelector('tr'); if(!first) return;
-    const typeKey=first.querySelector('.selType').value;
-    const rho= num(first.querySelector('.inpRho').value,1);
-    const adr = first.querySelector('.selAdr').value;
-    const rows=[...tb.querySelectorAll('tr')];
-    rows.forEach((tr,i)=>{ if(i===0) return; tr.querySelector('.selType').value=typeKey; tr.querySelector('.inpRho').value=rho; tr.querySelector('.selAdr').value=adr; });
-    recalc();
+    if(e.target.checked){
+      applyCargoSelectionToRows(true);
+      recalc();
+    }
   });
 
   // модалка прицепа
@@ -498,13 +570,40 @@ function bind(){
   if($('mt_save')) $('mt_save').addEventListener('click', saveTruck);
 
   // продукты
-  if($('btnAddProduct')) $('btnAddProduct').addEventListener('click', ()=>{
-    const label = prompt('Название продукта:'); if(!label) return;
-    const rho = parseFloat(prompt('Плотность ρ, кг/л:','1.00')); if(!Number.isFinite(rho)||rho<=0){ alert('Некорректная плотность'); return; }
-    const adr = prompt('ADR (3 / 8 / —):','—') || '—';
-    addCustomProduct(label.trim(), rho, adr);
-    renderCurrent();
+  if($('btnAddProduct')) $('btnAddProduct').addEventListener('click', openProductModal);
+  if($('prod_cancel')) $('prod_cancel').addEventListener('click', closeProductModal);
+  if($('prod_save')) $('prod_save').addEventListener('click', saveProductFromModal);
+
+  const cargoSelect=$('cargoTypeCommon');
+  if(cargoSelect) cargoSelect.addEventListener('change', e=>{
+    app.cargoTypeKey=e.target.value;
+    const dict=getAllProducts().find(p=>p.key===app.cargoTypeKey);
+    if(dict && Number.isFinite(dict.rho)) app.cargoRho=dict.rho;
+    renderCargoControls();
+    const forceAll=$('chkAllSame')?.checked;
+    applyCargoSelectionToRows(forceAll);
+    recalc();
+    saveState();
   });
+  const rhoCommon=$('rhoCommon');
+  if(rhoCommon){
+    rhoCommon.addEventListener('input', e=>{
+      const val=parseFloat(e.target.value);
+      app.cargoRho=Number.isFinite(val)?val:NaN;
+      if(Number.isFinite(val) && val>0){
+        const forceAll=$('chkAllSame')?.checked;
+        applyCargoSelectionToRows(forceAll);
+        recalc();
+        saveState();
+      }
+    });
+    rhoCommon.addEventListener('blur', e=>{
+      const val=parseFloat(e.target.value);
+      if(!(Number.isFinite(val) && val>0)){
+        alert('Введите корректную плотность (>0)');
+      }
+    });
+  }
 
   // карты
   if($('btnRoute')) $('btnRoute').addEventListener('click', buildRoute);
@@ -567,6 +666,57 @@ function saveTruck(){
   if($('tractorAxles')) $('tractorAxles').value=String(axles);
   app.tractorPlate=plate; app.tractorAxles=axles; saveState();
   closeTruckModal();
+}
+
+// ===== Modal logic (products)
+let productModalHandler=null;
+function openProductModal(){
+  const modal=$('productModal');
+  if(!modal) return;
+  const name=$('prod_name');
+  const rho=$('prod_rho');
+  if(name) name.value='';
+  if(rho) rho.value='';
+  modal.classList.add('open');
+  if(productModalHandler){
+    document.removeEventListener('keydown', productModalHandler);
+    productModalHandler=null;
+  }
+  productModalHandler=(e)=>{
+    if(e.key==='Escape'){
+      e.preventDefault();
+      closeProductModal();
+    }
+  };
+  document.addEventListener('keydown', productModalHandler);
+  setTimeout(()=>{ try{ name?.focus(); }catch(_){} }, 0);
+}
+function closeProductModal(){
+  const modal=$('productModal');
+  if(modal) modal.classList.remove('open');
+  if(productModalHandler){
+    document.removeEventListener('keydown', productModalHandler);
+    productModalHandler=null;
+  }
+}
+function saveProductFromModal(e){
+  if(e) e.preventDefault();
+  const nameInput=$('prod_name');
+  const rhoInput=$('prod_rho');
+  const rawName=(nameInput?.value||'').trim();
+  if(!rawName){ alert('Укажите название груза'); nameInput?.focus(); return; }
+  const normalizedName=rawName.replace(/\s+/g,' ');
+  const rho=parseFloat((rhoInput?.value||'').trim());
+  if(!Number.isFinite(rho) || rho<=0){ alert('Плотность должна быть > 0'); rhoInput?.focus(); return; }
+  const rhoRounded=Number(rho.toFixed(3));
+  const key=addCustomProduct(normalizedName, rhoRounded, 'Не знаю');
+  app.cargoTypeKey=key;
+  app.cargoRho=rhoRounded;
+  closeProductModal();
+  renderCargoControls();
+  applyCargoSelectionToRows(true);
+  recalc();
+  saveState();
 }
 
 // ===== Axle calc
