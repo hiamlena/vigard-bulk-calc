@@ -25,6 +25,8 @@
     .btn{border:1px solid var(--border);background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
     .small{font-size:12px;color:#6b7280}
+    .singleCargoRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .singleCargoRow .singleCargoLabel{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
     .kpi{display:grid;gap:12px;grid-template-columns:1fr 1fr}
     .kpi .box{border:1px solid var(--border);border-radius:12px;padding:12px}
     .kpi .t{color:var(--muted);font-size:12px}
@@ -134,8 +136,8 @@
         <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
           <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <div style="display:flex;gap:12px;align-items:center">
-              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="singleCargoMode" type="checkbox" checked> все отсеки — один груз</label>
+            <div class="singleCargoRow">
+              <label class="small singleCargoLabel"><input id="singleCargoMode" type="checkbox" checked><span>все отсеки — один груз</span></label>
               <button class="btn" id="fillMax">Заполнить по максимуму</button>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
