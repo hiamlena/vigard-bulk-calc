@@ -47,6 +47,10 @@
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);padding:20px}
     .modal.open{display:flex}
     .modal>.sheet{background:#fff;border-radius:16px;padding:16px;max-width:640px;width:100%;border:1px solid var(--border)}
+    .toast{position:fixed;bottom:24px;right:24px;background:rgba(17,24,39,.95);color:#fff;padding:10px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s ease;font-size:14px;z-index:1000}
+    .toast.warn{background:rgba(180,83,9,.95)}
+    .toast.error{background:rgba(185,28,28,.95)}
+    .toast.show{opacity:1}
   </style>
 </head>
 <body>
@@ -135,35 +139,45 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
         <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
-          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <div class="singleCargoRow">
-              <label class="small singleCargoLabel"><input id="singleCargoMode" type="checkbox" checked><span>все отсеки — один груз</span></label>
-              <button class="btn" id="fillMax">Заполнить по максимуму</button>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <div id="singleCargoControls" style="display:flex;gap:8px;align-items:center">
-                <select id="singleCargoType"></select>
-                <span class="small" id="singleCargoAdr">ADR: —</span>
-                <label class="small" style="display:flex;gap:6px;align-items:center">ρ <input id="singleCargoRho" type="number" step="0.001" style="width:90px"></label>
+          <div id="globalCargoPanel">
+            <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 8px">
+              <div style="flex:1 1 220px;min-width:200px">
+                <label class="small" style="margin:0 0 4px">Тип груза</label>
+                <select id="cargoType"></select>
               </div>
-              <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+              <div>
+                <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+              </div>
+              <div style="flex:0 0 120px">
+                <label class="small" style="margin:0 0 4px">ADR</label>
+                <select id="cargoAdr"><option value="—">—</option><option value="3">3</option><option value="8">8</option></select>
+              </div>
+              <div style="flex:0 0 140px">
+                <label class="small" style="margin:0 0 4px">ρ (кг/л)</label>
+                <input id="cargoRho" type="number" step="0.001" placeholder="1.300">
+              </div>
             </div>
-          </div>
 
-          <div class="row cols-2" style="margin:6px 0 10px">
-            <div>
-              <label>Сколько везём (масса), т</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalMassT" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
+            <div class="row cols-2" style="margin:6px 0 10px">
+              <div>
+                <label>Сколько везём (масса), т</label>
+                <div style="display:flex;gap:8px">
+                  <input id="totalMassT" type="number" placeholder="Введите">
+                  <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
+                </div>
+              </div>
+              <div>
+                <label>Сколько везём (объём), м³</label>
+                <div style="display:flex;gap:8px">
+                  <input id="totalVolM3" type="number" placeholder="Введите">
+                  <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
+                </div>
               </div>
             </div>
-            <div>
-              <label>Сколько везём (объём), м³</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolM3" type="number" placeholder="Введите">
-                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
-              </div>
+
+            <div class="singleCargoRow" style="margin:6px 0 10px">
+              <label class="small singleCargoLabel"><input id="chkAllSame" type="checkbox" checked><span>все отсеки — один груз</span></label>
+              <button class="btn" id="fillMax">Заполнить по максимуму</button>
             </div>
           </div>
 
@@ -228,6 +242,24 @@
       <button class="btn primary" id="m_save">Сохранить</button>
       <button class="btn" id="m_cancel">Отмена</button>
     </div>
+  </div></div>
+
+  <!-- Modal: add product -->
+  <div id="modalProduct" class="modal" role="dialog" aria-modal="true"><div class="sheet">
+    <h3 style="margin-top:0">Добавить груз</h3>
+    <form id="mp_form">
+      <div class="row">
+        <div><label>Название</label><input id="mp_name" placeholder="Например: Сироп яблочный" maxlength="80"></div>
+      </div>
+      <div class="row cols-3">
+        <div><label>ρ (кг/л)</label><input id="mp_rho" type="number" step="0.001" min="0" max="2" placeholder="1.300"></div>
+        <div><label>ADR</label><select id="mp_adr"><option value="—" selected>—</option><option value="3">3</option><option value="8">8</option></select></div>
+      </div>
+      <div class="btns" style="margin-top:10px">
+        <button class="btn primary" id="mp_save" type="submit">Сохранить</button>
+        <button class="btn" id="mp_cancel" type="button">Отмена</button>
+      </div>
+    </form>
   </div></div>
 
   <!-- Axle calc block -->
@@ -307,5 +339,6 @@
   </div>
 
   <script src="app.js"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
