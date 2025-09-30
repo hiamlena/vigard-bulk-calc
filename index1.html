@@ -158,32 +158,29 @@
 
         <div id="tankSection">
           <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
-            <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
-            <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+            <div style="display:flex;gap:12px;align-items:center">
+              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
+              <button class="btn" id="fillMax">Заполнить по максимуму</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+            </div>
           </div>
 
           <!-- ==== Панель пакетного распределения ==== -->
-          <div class="row cols-3" style="margin:6px 0 10px">
+          <div class="row cols-2" style="margin:6px 0 10px">
             <div>
               <label>Сколько везём (масса), т</label>
               <div style="display:flex;gap:8px">
-                <input id="totalMassT" type="number" placeholder="например 12">
+                <input id="totalMassT" type="number" placeholder="Введите">
                 <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
               </div>
-              <div class="small">Если включено «все отсеки — один груз», плотность берётся из #1, иначе — из каждой строки.</div>
             </div>
             <div>
               <label>Сколько везём (объём), м³</label>
               <div style="display:flex;gap:8px">
-                <input id="totalVolM3" type="number" placeholder="например 28.5">
+                <input id="totalVolM3" type="number" placeholder="Введите">
                 <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
-              </div>
-            </div>
-            <div>
-              <label>…или объём, л</label>
-              <div style="display:flex;gap:8px">
-                <input id="totalVolL" type="number" placeholder="например 28500">
-                <button class="btn" id="btnDistributeL" style="white-space:nowrap">Распределить по литрам</button>
               </div>
             </div>
           </div>
@@ -192,19 +189,17 @@
           <table>
             <thead>
               <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th><th>т</th><th>м³</th>
+                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th>
               </tr>
             </thead>
             <tbody id="tankBody"></tbody>
           </table>
 
-          <div class="small">Лимиты по отсекам: <span id="capsLine"></span></div>
           <div class="small" id="fitSummary" style="margin-top:6px"></div>
 
           <div class="btns" style="margin-top:8px">
             <button class="btn" id="addCompartment">+ Отсек</button>
             <button class="btn" id="removeCompartment">− Отсек</button>
-            <button class="btn" id="fillMax">Заполнить по максимуму</button>
             <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
@@ -258,6 +253,21 @@
     <div class="btns" style="margin-top:10px">
       <button class="btn primary" id="m_save">Сохранить</button>
       <button class="btn" id="m_cancel">Отмена</button>
+    </div>
+  </div></div>
+
+  <!-- Modal: груз -->
+  <div id="productModal" class="modal"><div class="sheet">
+    <h3 style="margin-top:0">Добавить груз</h3>
+    <div class="row cols-3">
+      <div><label>Название</label><input id="prod_name" placeholder="Введите"></div>
+      <div><label>ρ (кг/л)</label><input id="prod_rho" type="number" step="0.001" placeholder="Введите"></div>
+      <div><label>ADR</label><input id="prod_adr" placeholder="Введите"></div>
+    </div>
+    <div class="small" style="margin-top:8px">Груз сохранится и сразу появится в списке.</div>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn primary" id="prod_save">Сохранить</button>
+      <button class="btn" id="prod_cancel">Отмена</button>
     </div>
   </div></div>
 
