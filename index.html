@@ -27,6 +27,9 @@
     .small{font-size:12px;color:#6b7280}
     .singleCargoRow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .singleCargoRow .singleCargoLabel{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+    .cargoRow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:6px 0 8px}
+    .cargoRow .cargoField{display:flex;flex-direction:column;gap:4px;min-width:120px}
+    .cargoRow .cargoField label{margin:0}
     .kpi{display:grid;gap:12px;grid-template-columns:1fr 1fr}
     .kpi .box{border:1px solid var(--border);border-radius:12px;padding:12px}
     .kpi .t{color:var(--muted);font-size:12px}
@@ -140,21 +143,15 @@
         <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
           <div id="globalCargoPanel">
-            <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 8px">
-              <div style="flex:1 1 220px;min-width:200px">
-                <label class="small" style="margin:0 0 4px">Тип груза</label>
-                <select id="cargoType"></select>
+            <div class="cargoRow">
+              <div class="cargoField" style="flex:1 1 220px;min-width:200px">
+                <label class="small" for="cargoTypeCommon">Тип груза</label>
+                <select id="cargoTypeCommon"></select>
               </div>
-              <div>
-                <button class="btn" id="btnAddProduct">+ Добавить груз</button>
-              </div>
-              <div style="flex:0 0 120px">
-                <label class="small" style="margin:0 0 4px">ADR</label>
-                <select id="cargoAdr"><option value="—">—</option><option value="3">3</option><option value="8">8</option></select>
-              </div>
-              <div style="flex:0 0 140px">
-                <label class="small" style="margin:0 0 4px">ρ (кг/л)</label>
-                <input id="cargoRho" type="number" step="0.001" placeholder="1.300">
+              <button class="btn" id="btnAddProduct" title="Добавить груз" aria-label="Добавить груз">+</button>
+              <div class="cargoField" style="flex:0 0 140px">
+                <label class="small" for="rhoCommon">ρ (кг/л)</label>
+                <input id="rhoCommon" type="number" step="0.001" placeholder="1.300">
               </div>
             </div>
 
@@ -253,7 +250,6 @@
       </div>
       <div class="row cols-3">
         <div><label>ρ (кг/л)</label><input id="mp_rho" type="number" step="0.001" min="0" max="2" placeholder="1.300"></div>
-        <div><label>ADR</label><select id="mp_adr"><option value="—" selected>—</option><option value="3">3</option><option value="8">8</option></select></div>
       </div>
       <div class="btns" style="margin-top:10px">
         <button class="btn primary" id="mp_save" type="submit">Сохранить</button>
