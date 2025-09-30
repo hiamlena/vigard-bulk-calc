@@ -133,18 +133,49 @@
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
         <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
+          <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="singleCargoMode" type="checkbox" checked> все отсеки — один груз</label>
+              <button class="btn" id="fillMax">Заполнить по максимуму</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div id="singleCargoControls" style="display:flex;gap:8px;align-items:center">
+                <select id="singleCargoType"></select>
+                <span class="small" id="singleCargoAdr">ADR: —</span>
+                <label class="small" style="display:flex;gap:6px;align-items:center">ρ <input id="singleCargoRho" type="number" step="0.001" style="width:90px"></label>
+              </div>
+              <button class="btn" id="btnAddProduct">+ Добавить груз</button>
+            </div>
+          </div>
+
+          <div class="row cols-2" style="margin:6px 0 10px">
+            <div>
+              <label>Сколько везём (масса), т</label>
+              <div style="display:flex;gap:8px">
+                <input id="totalMassT" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeMass" style="white-space:nowrap">Распределить по массе</button>
+              </div>
+            </div>
+            <div>
+              <label>Сколько везём (объём), м³</label>
+              <div style="display:flex;gap:8px">
+                <input id="totalVolM3" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeM3" style="white-space:nowrap">Распределить по объёму</button>
+              </div>
+            </div>
+          </div>
+
           <table>
             <thead>
-              <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th>
-              </tr>
+              <tr id="tankHeadRow"></tr>
             </thead>
             <tbody id="tankBody"></tbody>
           </table>
-          <div class="small">Лимиты по отсекам: <span id="capsLine"></span></div>
+          <div class="small" id="fitSummary" style="margin-top:6px"></div>
           <div class="btns" style="margin-top:8px">
             <button class="btn" id="addCompartment">+ Отсек</button>
             <button class="btn" id="removeCompartment">− Отсек</button>
+            <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
         <div id="platformSection" style="display:none">
