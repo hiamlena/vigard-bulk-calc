@@ -158,10 +158,15 @@
         <div id="tankSection">
           <div class="row inline" style="justify-content:space-between;margin:6px 0 8px">
             <div style="display:flex;gap:12px;align-items:center">
-              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="chkAllSame" type="checkbox"> все отсеки — один груз</label>
+              <label class="small" style="display:flex;gap:8px;align-items:center"><input id="singleCargoMode" type="checkbox" checked> все отсеки — один груз</label>
               <button class="btn" id="fillMax">Заполнить по максимуму</button>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
+              <div id="singleCargoControls" style="display:flex;gap:8px;align-items:center">
+                <select id="singleCargoType"></select>
+                <span class="small" id="singleCargoAdr">ADR: —</span>
+                <label class="small" style="display:flex;gap:6px;align-items:center">ρ <input id="singleCargoRho" type="number" step="0.001" style="width:90px"></label>
+              </div>
               <button class="btn" id="btnAddProduct">+ Добавить груз</button>
             </div>
           </div>
@@ -187,9 +192,7 @@
 
           <table>
             <thead>
-              <tr>
-                <th>Отсек</th><th>Тип груза</th><th>ADR</th><th>ρ (кг/л)</th><th>Объём, л</th><th>Масса, кг</th>
-              </tr>
+              <tr id="tankHeadRow"></tr>
             </thead>
             <tbody id="tankBody"></tbody>
           </table>
