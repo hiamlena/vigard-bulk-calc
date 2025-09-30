@@ -93,6 +93,88 @@ function showToast(message, type='ok'){
 
 let productModalKeyHandler=null;
 
+function ensureCargoStyles(){
+  if(document.getElementById('cargoInlineStyles')) return;
+  const style=document.createElement('style');
+  style.id='cargoInlineStyles';
+  style.textContent=`
+.cargoInline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.singleCargoRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.singleCargoRow .spacer{flex:1 1 auto;}
+`.trim();
+  document.head.appendChild(style);
+}
+
+function ensureSingleCargoSpacer(){
+  const row=document.querySelector('#globalCargoPanel .singleCargoRow');
+  if(!row) return;
+  if(!row.querySelector('.spacer')){
+    const spacer=document.createElement('div');
+    spacer.className='spacer';
+    const fillBtn=$('fillMax');
+    if(fillBtn && fillBtn.parentElement===row){
+      row.insertBefore(spacer, fillBtn);
+    } else {
+      row.appendChild(spacer);
+    }
+  }
+}
+
+function setupCargoLayout(){
+  ensureCargoStyles();
+  const panel=$('globalCargoPanel');
+  if(!panel) return;
+  if(!panel.dataset.cargoLayoutApplied){
+    const tankSection=$('tankSection');
+    if(tankSection && panel.parentElement===tankSection){
+      const wrapper=document.createElement('div');
+      wrapper.id='globalCargoWrapper';
+      tankSection.parentElement.insertBefore(wrapper, tankSection);
+      wrapper.appendChild(panel);
+    }
+    const typeBlock=$('cargoType')?.closest('div');
+    const addBlock=$('btnAddProduct')?.closest('div');
+    const adrBlock=$('cargoAdr')?.closest('div');
+    const rhoBlock=$('cargoRho')?.closest('div');
+    const row=typeBlock?.parentElement;
+    if(row && typeBlock && addBlock && adrBlock && rhoBlock){
+      const inline=document.createElement('div');
+      inline.className='cargoInline';
+      inline.append(typeBlock, addBlock, adrBlock, rhoBlock);
+      row.appendChild(inline);
+    }
+    panel.dataset.cargoLayoutApplied='1';
+  }
+  const addBtn=$('btnAddProduct');
+  if(addBtn){
+    addBtn.textContent='+';
+    addBtn.setAttribute('aria-label','Добавить груз');
+    addBtn.setAttribute('title','Добавить груз');
+  }
+  ensureSingleCargoSpacer();
+}
+
+function disableCompartmentButtons(){
+  const addBtn=$('addCompartment');
+  if(addBtn){
+    addBtn.style.display='none';
+    addBtn.disabled=true;
+  }
+  const removeBtn=$('removeCompartment');
+  if(removeBtn){
+    removeBtn.style.display='none';
+    removeBtn.disabled=true;
+  }
+}
+
+function updateTankSectionVisibility(){
+  const tank=$('tankSection');
+  const isTanker=app.trailerState?.type==='tanker';
+  if(!tank){ return; }
+  const show=isTanker && !app.singleCargo;
+  tank.style.display=show?'block':'none';
+}
+
 // ===== Data =====
 const defaultProducts=[
   { key: "diesel", label: "Дизельное топливо (ДТ)", rho: 0.84, adr: "3" },
@@ -313,6 +395,7 @@ function applyGlobalCargoToRows(){
   });
 }
 function renderSingleCargoControls(){
+  setupCargoLayout();
   const products=getAllProducts();
   const hasTanker=app.trailerState?.type==='tanker';
   const panel=$('globalCargoPanel');
@@ -337,9 +420,13 @@ function renderSingleCargoControls(){
   }
   const adrSelect=$('cargoAdr');
   if(adrSelect){
-    const options=['—','3','8'];
-    adrSelect.innerHTML=options.map(val=>`<option value="${val}">${val}</option>`).join('');
-    if(!options.includes(app.singleCargoAdr)) app.singleCargoAdr='—';
+    const options=[
+      { value:'—', label:'Не знаю' },
+      { value:'3', label:'3' },
+      { value:'8', label:'8' }
+    ];
+    adrSelect.innerHTML=options.map(opt=>`<option value="${opt.value}">${opt.label}</option>`).join('');
+    if(!options.some(opt=>opt.value===app.singleCargoAdr)) app.singleCargoAdr='—';
     adrSelect.value=app.singleCargoAdr||'—';
     adrSelect.disabled=!hasTanker;
   }
@@ -351,11 +438,17 @@ function renderSingleCargoControls(){
     rhoInput.disabled=!hasTanker;
   }
   const addBtn=$('btnAddProduct');
-  if(addBtn) addBtn.disabled=!hasTanker;
+  if(addBtn){
+    addBtn.disabled=!hasTanker;
+    addBtn.textContent='+';
+    addBtn.setAttribute('aria-label','Добавить груз');
+    addBtn.setAttribute('title','Добавить груз');
+  }
   const massInput=$('totalMassT');
   if(massInput) massInput.value=(app.totalMassT!==undefined && app.totalMassT!==null)?app.totalMassT:'';
   const volInput=$('totalVolM3');
   if(volInput) volInput.value=(app.totalVolM3!==undefined && app.totalVolM3!==null)?app.totalVolM3:'';
+  updateTankSectionVisibility();
 }
 
 // === Platform table
@@ -603,6 +696,8 @@ function selectTrailer(id){
   renderCurrent(); saveState();
 }
 function renderCurrent(){
+  setupCargoLayout();
+  disableCompartmentButtons();
   const trailers=getAllTrailers();
   const t=trailers.find(x=>x.id===app.selectedTrailerId) || trailers[0] || null;
   if(t){ app.selectedTrailerId=t.id; }
@@ -633,15 +728,24 @@ function renderCurrent(){
   if($('gmapsRow'))  $('gmapsRow').style.display  = isMaps ? 'grid'  : 'none';
   if($('gmapsNote')) $('gmapsNote').style.display = isMaps ? 'block' : 'none';
 
-  if(app.trailerState?.type==='tanker'){ if($('tankSection')) $('tankSection').style.display='block'; if($('platformSection')) $('platformSection').style.display='none'; ensureRowsMatchCaps(app.trailerState); if(app.singleCargo) applyGlobalCargoToRows(); buildTankRows(app.trailerState); renderSingleCargoControls(); }
-  else if(app.trailerState?.type==='platform'){ if($('tankSection')) $('tankSection').style.display='none'; if($('platformSection')) $('platformSection').style.display='block'; buildPlatRows(app.trailerState); }
+  const platformSection=$('platformSection');
+  if(platformSection) platformSection.style.display='none';
+
+  if(app.trailerState?.type==='tanker'){
+    ensureRowsMatchCaps(app.trailerState);
+    if(app.singleCargo) applyGlobalCargoToRows();
+    buildTankRows(app.trailerState);
+  }
+  else if(app.trailerState?.type==='platform'){
+    if(platformSection) platformSection.style.display='block';
+    buildPlatRows(app.trailerState);
+  }
   else {
-    if($('tankSection')) $('tankSection').style.display='none';
-    if($('platformSection')) $('platformSection').style.display='none';
     if($('fitSummary')) $('fitSummary').textContent='';
   }
 
-  if(app.trailerState?.type!=='tanker') renderSingleCargoControls();
+  updateTankSectionVisibility();
+  renderSingleCargoControls();
 
   recalc();
 }
@@ -977,8 +1081,6 @@ function bind(){
 
   if($('fillMax')) $('fillMax').addEventListener('click', fillCompartmentMax);
   if($('clearAll')) $('clearAll').addEventListener('click', clearCompartments);
-  if($('addCompartment')) $('addCompartment').addEventListener('click', addCompartment);
-  if($('removeCompartment')) $('removeCompartment').addEventListener('click', removeCompartment);
 
   const singleMode=$('chkAllSame');
   if(singleMode) singleMode.addEventListener('change', e=>{
@@ -988,6 +1090,7 @@ function bind(){
       if(app.singleCargo) applyGlobalCargoToRows();
       buildTankRows(app.trailerState);
     }
+    updateTankSectionVisibility();
     renderSingleCargoControls();
     recalc();
   });
@@ -1123,7 +1226,7 @@ function saveProductFromModal(event){
   const rhoInput=$('mp_rho');
   const rhoStr=(rhoInput?.value||'').trim();
   const rho=parseFloat(rhoStr);
-  if(!Number.isFinite(rho) || rho<=0 || rho>2){ showToast('Плотность должна быть >0 и ≤ 2.000 кг/л', 'warn'); rhoInput?.focus(); return; }
+  if(!Number.isFinite(rho) || rho<=0){ showToast('Плотность должна быть >0 кг/л', 'warn'); rhoInput?.focus(); return; }
   const adrSelect=$('mp_adr');
   const adrValue=(adrSelect?.value||'—').trim();
   if(!['—','3','8'].includes(adrValue)){ showToast('Выберите ADR из списка', 'warn'); adrSelect?.focus(); return; }
