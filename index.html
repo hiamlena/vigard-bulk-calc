@@ -143,20 +143,24 @@
         <div id="tankSection">
           <div id="globalCargoPanel">
             <div class="singleCargoRow" style="margin:6px 0 10px">
-              <label class="small singleCargoLabel" for="cargoType" style="margin:0">Тип груза</label>
+              <label class="small singleCargoLabel" for="cargoType" style="margin:0">Тип груза:</label>
               <select id="cargoType"></select>
               <button class="btn" id="btnAddProduct" type="button" aria-label="Добавить груз" title="Добавить груз">+</button>
               <label class="small singleCargoLabel" for="cargoRho" style="margin:0">ρ (кг/л)</label>
               <input id="cargoRho" type="number" step="0.001" placeholder="1.300">
             </div>
 
-            <div class="singleCargoRow" style="margin:6px 0 10px">
-              <label class="small singleCargoLabel" for="totalMassT" style="margin:0">Сколько везём (масса), т</label>
-              <input id="totalMassT" type="number" placeholder="Введите">
-              <button class="btn" id="btnDistributeMass" type="button">Распределить по массе</button>
-              <label class="small singleCargoLabel" for="totalVolM3" style="margin:0">Сколько везём (объём), м³</label>
-              <input id="totalVolM3" type="number" placeholder="Введите">
-              <button class="btn" id="btnDistributeM3" type="button">Распределить по объёму</button>
+            <div class="singleCargoRow" style="margin:6px 0 10px;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+                <label class="small singleCargoLabel" for="totalMassT" style="margin:0">Сколько везём (масса), т</label>
+                <input id="totalMassT" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeMass" type="button">Распределить по массе</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;white-space:nowrap">
+                <label class="small singleCargoLabel" for="totalVolM3" style="margin:0">Сколько везём (объём), м³</label>
+                <input id="totalVolM3" type="number" placeholder="Введите">
+                <button class="btn" id="btnDistributeM3" type="button">Распределить по объёму</button>
+              </div>
             </div>
 
             <div class="singleCargoRow" style="margin:6px 0 10px">
@@ -173,14 +177,12 @@
           </table>
           <div class="small" id="fitSummary" style="margin-top:6px"></div>
           <div class="btns" style="margin-top:8px">
-            <button class="btn" id="addCompartment">+ Отсек</button>
-            <button class="btn" id="removeCompartment">− Отсек</button>
             <button class="btn" id="clearAll">Очистить</button>
           </div>
         </div>
         <div id="platformSection" style="display:none">
           <table>
-            <thead><tr><th>Позиция</th><th>Масса, кг</th></tr></thead>
+            <thead><tr><th>Позиция</th><th>Масса, т</th></tr></thead>
             <tbody id="platBody"></tbody>
           </table>
         </div>

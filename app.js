@@ -78,6 +78,15 @@ function setInputValue(input,value,dec=3){
   else input.value=String(dec>=0?roundTo(value,dec):value);
 }
 
+function getGlobalTypeSelect(){ return $('cargoType') || $('cargoTypeCommon'); }
+function getGlobalRhoInput(){ return $('cargoRho') || $('rhoCommon'); }
+function getProductModalElement(){ return $('modalProduct') || $('productModal'); }
+function getProductForm(){ return $('mp_form'); }
+function getProductNameInput(){ return $('mp_name') || $('prod_name'); }
+function getProductRhoInput(){ return $('mp_rho') || $('prod_rho'); }
+function getProductCancelButton(){ return $('mp_cancel') || $('prod_cancel'); }
+function getProductSaveButton(){ return $('prod_save'); }
+
 let toastTimer=null;
 function showToast(message, type='ok'){
   const el=$('toast');
@@ -113,23 +122,23 @@ function updateTankSectionVisibility(){
 
 // ===== Data =====
 const defaultProducts=[
-  { key: "diesel", label: "Дизельное топливо (ДТ)", rho: 0.84, adr: "3" },
-  { key: "gas92", label: "Бензин АИ-92", rho: 0.74, adr: "3" },
-  { key: "gas95", label: "Бензин АИ-95", rho: 0.75, adr: "3" },
-  { key: "molasses", label: "Патока", rho: 1.40, adr: "—" },
-  { key: "syrup", label: "Сироп сахарный", rho: 1.30, adr: "—" },
-  { key: "wine", label: "Вино", rho: 0.99, adr: "—" },
-  { key: "ethanol96", label: "Спирт этиловый (96%)", rho: 0.789, adr: "3" },
-  { key: "methanol", label: "Метанол", rho: 0.792, adr: "3" },
-  { key: "vinyl_acetate", label: "Винилацетат мономер (VAM)", rho: 0.934, adr: "3" },
-  { key: "butyl_acetate", label: "Бутилацетат", rho: 0.882, adr: "3" },
-  { key: "methyl_acetate", label: "Метилацетат", rho: 0.932, adr: "3" },
-  { key: "ethyl_acetate", label: "Этил ацетат", rho: 0.902, adr: "3" },
-  { key: "n_butanol", label: "н-Бутанол", rho: 0.810, adr: "3" },
-  { key: "acetic_acid_glacial", label: "Уксусная кислота (ледяная)", rho: 1.049, adr: "8" },
-  { key: "sulfuric_acid_96", label: "Серная кислота (96–98%)", rho: 1.830, adr: "8" },
-  { key: "heavy_oil", label: "Тяжёлые масла", rho: 0.93, adr: "3/—" },
-  { key: "formalin37", label: "Формалин 37%", rho: 1.09, adr: "8" }
+  { key: "diesel", label: "Дизельное топливо (ДТ)", rho: 0.84 },
+  { key: "gas92", label: "Бензин АИ-92", rho: 0.74 },
+  { key: "gas95", label: "Бензин АИ-95", rho: 0.75 },
+  { key: "molasses", label: "Патока", rho: 1.40 },
+  { key: "syrup", label: "Сироп сахарный", rho: 1.30 },
+  { key: "wine", label: "Вино", rho: 0.99 },
+  { key: "ethanol96", label: "Спирт этиловый (96%)", rho: 0.789 },
+  { key: "methanol", label: "Метанол", rho: 0.792 },
+  { key: "vinyl_acetate", label: "Винилацетат мономер (VAM)", rho: 0.934 },
+  { key: "butyl_acetate", label: "Бутилацетат", rho: 0.882 },
+  { key: "methyl_acetate", label: "Метилацетат", rho: 0.932 },
+  { key: "ethyl_acetate", label: "Этил ацетат", rho: 0.902 },
+  { key: "n_butanol", label: "н-Бутанол", rho: 0.810 },
+  { key: "acetic_acid_glacial", label: "Уксусная кислота (ледяная)", rho: 1.049 },
+  { key: "sulfuric_acid_96", label: "Серная кислота (96–98%)", rho: 1.830 },
+  { key: "heavy_oil", label: "Тяжёлые масла", rho: 0.93 },
+  { key: "formalin37", label: "Формалин 37%", rho: 1.09 }
 ];
 const defaultTrucks=[
   "В 010 СЕ 123","М 020 АМ 123","Е 030 ВК 123","Е 040 ВК 123","Т 050 ВТ 93","Н 060 ВТ 123","С 070 УА 93",
@@ -190,18 +199,31 @@ const LS_KEYS = {
 };
 
 // === Products
-function getAllProducts(){
-  const custom = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]');
-  return [...BASE_PRODUCTS, ...custom];
+function sanitizeProduct(item){
+  if(!item) return null;
+  const key=(typeof item.key==='string' && item.key.trim())?item.key.trim():null;
+  const label=(typeof item.label==='string' && item.label.trim())?item.label.trim():null;
+  const rhoVal=num(item.rho, NaN);
+  if(!key || !label || !Number.isFinite(rhoVal) || rhoVal<=0) return null;
+  return { key, label, rho: Number(rhoVal.toFixed(3)) };
 }
-function addCustomProduct(label, rho, adr){
-  const key = ('custom_'+label).toLowerCase().replace(/\s+/g,'_').replace(/[^\wа-яё_-]/gi,'');
-  const list = JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]');
+function getAllProducts(){
+  let custom=[];
+  try{ const raw=JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]'); if(Array.isArray(raw)) custom=raw; }catch(e){}
+  const baseList=Array.isArray(BASE_PRODUCTS)?BASE_PRODUCTS:[];
+  const sanitized=new Map();
+  baseList.map(sanitizeProduct).filter(Boolean).forEach(item=>{ sanitized.set(item.key, item); });
+  custom.map(sanitizeProduct).filter(Boolean).forEach(item=>{ sanitized.set(item.key, item); });
+  return [...sanitized.values()];
+}
+function addCustomProduct(label, rho){
+  const key=('custom_'+label).toLowerCase().replace(/\s+/g,'_').replace(/[^\wа-яё_-]/gi,'');
+  const list=(()=>{ try{ const raw=JSON.parse(localStorage.getItem(LS_KEYS.products)||'[]'); return Array.isArray(raw)?raw:[]; }catch(e){ return []; }})();
   const existingIndex=list.findIndex(item=>item.key===key);
   if(existingIndex>=0) list.splice(existingIndex,1);
-  const normalizedAdr = (typeof adr==='string' && adr.trim()) ? adr.trim() : 'Не знаю';
-  list.push({ key, label, rho, adr: normalizedAdr });
-  localStorage.setItem(LS_KEYS.products, JSON.stringify(list));
+  const normalized={ key, label, rho:Number(rho.toFixed(3)) };
+  list.push(normalized);
+  try{ localStorage.setItem(LS_KEYS.products, JSON.stringify(list)); }catch(e){}
   return key;
 }
 
@@ -337,18 +359,27 @@ function renderSingleCargoControls(){
     mode.checked=!!app.singleCargo;
     mode.disabled=!hasTanker;
   }
-  const typeSelect=$('cargoType');
+  const typeSelect=getGlobalTypeSelect();
   if(typeSelect){
-    typeSelect.innerHTML=products.map(p=>`<option value="${p.key}">${p.label}</option>`).join('');
-    if(!products.some(p=>p.key===app.singleCargoTypeKey)) app.singleCargoTypeKey=products[0]?.key||'';
-    if(app.singleCargoTypeKey) typeSelect.value=app.singleCargoTypeKey;
-    typeSelect.disabled=!hasTanker;
+    if(products.length){
+      typeSelect.innerHTML=products.map(p=>`<option value="${p.key}">${p.label}</option>`).join('');
+      if(!products.some(p=>p.key===app.singleCargoTypeKey)) app.singleCargoTypeKey=products[0]?.key||'';
+      if(app.singleCargoTypeKey) typeSelect.value=app.singleCargoTypeKey;
+    } else {
+      typeSelect.innerHTML='<option value="">—</option>';
+      typeSelect.value='';
+      app.singleCargoTypeKey='';
+    }
+    typeSelect.disabled=!hasTanker || !products.length;
   }
   const product=products.find(p=>p.key===app.singleCargoTypeKey);
   if(product && (!Number.isFinite(app.singleCargoRho) || app.singleCargoRho<=0)){
     app.singleCargoRho=product.rho;
   }
-  const rhoInput=$('cargoRho');
+  if(!product && (!Number.isFinite(app.singleCargoRho) || app.singleCargoRho<=0)){
+    app.singleCargoRho=NaN;
+  }
+  const rhoInput=getGlobalRhoInput();
   if(rhoInput){
     if(!rhoInput.matches(':focus')){
       rhoInput.value=(Number.isFinite(app.singleCargoRho) && app.singleCargoRho>0)?String(app.singleCargoRho):'';
@@ -363,9 +394,13 @@ function renderSingleCargoControls(){
     addBtn.setAttribute('title','Добавить груз');
   }
   const massInput=$('totalMassT');
-  if(massInput) massInput.value=(app.totalMassT!==undefined && app.totalMassT!==null)?app.totalMassT:'';
+  if(massInput && massInput!==document.activeElement){
+    massInput.value=(app.totalMassT!==undefined && app.totalMassT!==null)?app.totalMassT:'';
+  }
   const volInput=$('totalVolM3');
-  if(volInput) volInput.value=(app.totalVolM3!==undefined && app.totalVolM3!==null)?app.totalVolM3:'';
+  if(volInput && volInput!==document.activeElement){
+    volInput.value=(app.totalVolM3!==undefined && app.totalVolM3!==null)?app.totalVolM3:'';
+  }
   updateTankSectionVisibility();
 }
 
@@ -374,8 +409,12 @@ function buildPlatRows(state){
   const tb=$('platBody'); if(!tb) return;
   tb.innerHTML='';
   const n=state.positions||4; for(let i=0;i<n;i++){
-    const tr=document.createElement('tr'); const m=state.masses?.[i]||0;
-    tr.innerHTML=`<td><span class="pill">#${i+1}</span></td><td><input class="inpMass" type="number" value="${m}"></td>`; tb.appendChild(tr);
+    const tr=document.createElement('tr');
+    const kgVal=num(state.masses?.[i], NaN);
+    const tonsVal=Number.isFinite(kgVal)?roundTo(kgVal/1000,3):NaN;
+    const valueStr=Number.isFinite(tonsVal)?String(tonsVal):'';
+    tr.innerHTML=`<td><span class="pill">#${i+1}</span></td><td><input class="inpMass" type="number" step="0.001" value="${valueStr}"></td>`;
+    tb.appendChild(tr);
   }
 }
 
@@ -471,12 +510,20 @@ function normalizeLoadedState(raw){
 
   if(raw.trailerState && raw.trailerState.type==='tanker'){
     const caps=Array.isArray(raw.trailerState.caps)? raw.trailerState.caps.map(c=>num(c,0)) : [];
-    const rows=Array.isArray(raw.trailerState.rows)? raw.trailerState.rows.map(row=>({
-      typeKey: (typeof row?.typeKey==='string' && row.typeKey.trim()) ? row.typeKey.trim() : 'diesel',
-      rho: (Number.isFinite(num(row?.rho, NaN)) && num(row?.rho, NaN)>0) ? num(row?.rho, NaN) : 0.84,
-      liters: Math.max(0, num(row?.liters, 0)),
-      tons: Math.max(0, num(row?.tons, 0))
-    })) : [];
+    const rows=Array.isArray(raw.trailerState.rows)? raw.trailerState.rows.map(row=>{
+      const typeKey=(typeof row?.typeKey==='string' && row.typeKey.trim()) ? row.typeKey.trim() : 'diesel';
+      const rhoVal=num(row?.rho, NaN);
+      const litersVal=Math.max(0, num(row?.liters, 0));
+      const tonsRaw=num(row?.tons, NaN);
+      const kgRaw=num(row?.kg, NaN);
+      const tonsVal=Number.isFinite(tonsRaw) ? tonsRaw : (Number.isFinite(kgRaw) ? kgRaw/1000 : 0);
+      return {
+        typeKey,
+        rho: (Number.isFinite(rhoVal) && rhoVal>0) ? rhoVal : 0.84,
+        liters: litersVal,
+        tons: Math.max(0, tonsVal)
+      };
+    }) : [];
     normalized.trailerState = { ...raw.trailerState, type:'tanker', caps, rows };
   } else if(raw.trailerState && raw.trailerState.type==='platform'){
     const masses=Array.isArray(raw.trailerState.masses)? raw.trailerState.masses.map(m=>Math.max(0, num(m,0))) : [];
@@ -493,7 +540,21 @@ function getTankRows(){
 }
 function distributeByVolumeLiters(totalLiters, opts={}){
   if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  const litersRequested=Math.max(0, num(totalLiters, 0));
+  const rawValue=typeof totalLiters==='number'?totalLiters:parseFloat(totalLiters);
+  if(!Number.isFinite(rawValue)){
+    showToast('Введите валидное значение', 'warn');
+    return;
+  }
+  if(rawValue<0){
+    showToast('Отрицательные значения запрещены', 'warn');
+    return;
+  }
+  const litersRequested=Math.max(0, rawValue);
+  if(litersRequested===0){
+    app.lastLoadRequest=null;
+    recalc();
+    return;
+  }
   const { source='volume_liters', recordRequest=true } = opts;
   const rows=getTankRows();
   if(!rows.length){ app.pendingOverflowToast=false; return; }
@@ -554,7 +615,16 @@ function distributeByVolumeLiters(totalLiters, opts={}){
 }
 function distributeByMassTons(totalTons){
   if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  const tonsRequested=Math.max(0, num(totalTons, 0));
+  const rawValue=typeof totalTons==='number'?totalTons:parseFloat(totalTons);
+  if(!Number.isFinite(rawValue)){
+    showToast('Введите валидное значение', 'warn');
+    return;
+  }
+  if(rawValue<0){
+    showToast('Отрицательные значения запрещены', 'warn');
+    return;
+  }
+  const tonsRequested=Math.max(0, rawValue);
   const kgRequested=tonsRequested*1000;
   if(kgRequested<=0){ app.lastLoadRequest=null; recalc(); return; }
   const rows=getTankRows();
@@ -656,31 +726,15 @@ function clearCompartments(){
   if(!app.trailerState || app.trailerState.type!=='tanker') return;
   app.lastLoadRequest=null;
   app.pendingOverflowToast=false;
-  getTankRows().forEach(tr=>{ const l=tr.querySelector('.inpL'); const t=tr.querySelector('.inpT'); if(l) l.value=''; if(t) t.value=''; });
-  recalc();
-}
-
-function addCompartment(){
-  if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  app.lastLoadRequest=null;
-  const caps=app.trailerState.caps;
-  const last=caps[caps.length-1]||10000;
-  caps.push(last);
-  const base=app.singleCargo
-    ? { typeKey: app.singleCargoTypeKey||'diesel', rho: num(app.singleCargoRho,0.84) }
-    : app.trailerState.rows[0] || { typeKey:'diesel', rho:0.84 };
-  app.trailerState.rows.push({typeKey:base.typeKey, rho:base.rho, liters:0, tons:0});
-  buildTankRows(app.trailerState);
-  recalc();
-}
-
-function removeCompartment(){
-  if(!app.trailerState || app.trailerState.type!=='tanker') return;
-  if(app.trailerState.caps.length<=1) return;
-  app.lastLoadRequest=null;
-  app.trailerState.caps.pop();
-  app.trailerState.rows.pop();
-  buildTankRows(app.trailerState);
+  getTankRows().forEach(tr=>{
+    const l=tr.querySelector('.inpL');
+    const t=tr.querySelector('.inpT');
+    if(l) l.value='';
+    if(t) t.value='';
+  });
+  if(Array.isArray(app.trailerState.rows)){
+    app.trailerState.rows.forEach(row=>{ row.liters=0; row.tons=0; });
+  }
   recalc();
 }
 
@@ -934,10 +988,14 @@ function recalc(){
     const rows=tb?[...tb.querySelectorAll('tr')]:[];
     const masses=[];
     rows.forEach((tr,i)=>{
-      let m=num(tr.querySelector('.inpMass')?.value,0);
-      if(m<0){ warns.push(`Позиция #${i+1}: отрицательная масса`); m=0; }
-      masses[i]=m;
-      totalKg+=m;
+      const input=tr.querySelector('.inpMass');
+      let tonsVal=parseFloat(input?.value||'');
+      if(!Number.isFinite(tonsVal)) tonsVal=0;
+      if(tonsVal<0){ warns.push(`Позиция #${i+1}: отрицательная масса`); tonsVal=0; }
+      if(input) setInputValue(input, tonsVal, 3);
+      const kg=tonsVal*1000;
+      masses[i]=kg;
+      totalKg+=kg;
     });
     tstate.masses=masses;
     const fitBox=$('fitSummary');
@@ -989,11 +1047,13 @@ function recalc(){
     tstate.rows.forEach((r,i)=>{
       const prod=products.find(p=>p.key===r.typeKey);
       const rhoText=Number.isFinite(r.rho)&&r.rho>0 ? r.rho.toFixed(3) : '—';
-      lines.push(`#${i+1}: ${(prod?.label)||r.typeKey} · ρ ${rhoText} кг/л · ${Math.round(r.liters)} л (≈ ${(r.tons||0).toFixed(3)} т)`);
+      const litersText = Number.isFinite(r.liters) ? Math.round(r.liters).toLocaleString('ru-RU') : '—';
+      const tonsText = fmtT2(r.tons||0);
+      lines.push(`#${i+1}: ${(prod?.label)||r.typeKey} · ρ ${rhoText} кг/л · ${litersText} л (≈ ${tonsText})`);
     });
   } else {
     (tstate.masses||[]).forEach((kg,i)=>{
-      lines.push(`#${i+1}: ${Math.round(kg)} кг`);
+      lines.push(`#${i+1}: ${fmtT2((kg||0)/1000)}`);
     });
   }
   const routeStr=(app.routeFrom||app.routeTo)? `Маршрут: ${app.routeFrom||'?'} → ${app.routeTo||'?'}`:'';
@@ -1068,11 +1128,11 @@ function bind(){
         const d = getAllProducts().find(x=>x.key===typeKey);
         if(d){
           const rhoInp = tr.querySelector('.inpRho');
-          if(rhoInp && !rhoInp.value) rhoInp.value = d.rho;
-          const rows=getTankRows();
-          const idx=rows.indexOf(tr);
-          recalc();
+          if(rhoInp){
+            rhoInp.value = String(d.rho);
+          }
         }
+        recalc();
       }
     });
   }
@@ -1113,23 +1173,27 @@ function bind(){
     });
   }
   if($('btnDistributeMass')) $('btnDistributeMass').addEventListener('click', ()=>{
-    const t = num($('totalMassT').value, NaN);
-    if(!isFinite(t) || t <= 0){ showToast('Ничего не распределено: нет литров/тонн/м³ или ρ', 'warn'); return; }
-    app.totalMassT=String($('totalMassT').value||'');
+    const raw=$('totalMassT').value;
+    const parsed=parseFloat(raw);
+    if(!Number.isFinite(parsed)){ showToast('Введите валидное значение', 'warn'); return; }
+    if(parsed<0){ showToast('Отрицательные значения запрещены', 'warn'); return; }
+    if(parsed===0){ showToast('Ничего не распределено: нет литров/тонн/м³ или ρ', 'warn'); return; }
+    app.totalMassT=String(raw||'');
     app.pendingOverflowToast=true;
-    distributeByMassTons(t);
+    distributeByMassTons(parsed);
   });
   if($('btnDistributeM3')) $('btnDistributeM3').addEventListener('click', ()=>{
-    const m3 = num($('totalVolM3').value, NaN);
-    if(!isFinite(m3) || m3 <= 0){ showToast('Ничего не распределено: нет литров/тонн/м³ или ρ', 'warn'); return; }
-    app.totalVolM3=String($('totalVolM3').value||'');
+    const raw=$('totalVolM3').value;
+    const parsed=parseFloat(raw);
+    if(!Number.isFinite(parsed)){ showToast('Введите валидное значение', 'warn'); return; }
+    if(parsed<0){ showToast('Отрицательные значения запрещены', 'warn'); return; }
+    if(parsed===0){ showToast('Ничего не распределено: нет литров/тонн/м³ или ρ', 'warn'); return; }
+    app.totalVolM3=String(raw||'');
     app.pendingOverflowToast=true;
-    distributeByVolumeLiters(m3*1000, { source:'volume_m3' });
+    distributeByVolumeLiters(parsed*1000, { source:'volume_m3' });
   });
 
   if($('fillMax')) $('fillMax').addEventListener('click', fillCompartmentMax);
-  if($('addCompartment')) $('addCompartment').addEventListener('click', addCompartment);
-  if($('removeCompartment')) $('removeCompartment').addEventListener('click', removeCompartment);
   if($('clearAll')) $('clearAll').addEventListener('click', clearCompartments);
 
   const singleMode=$('chkAllSame');
@@ -1144,7 +1208,7 @@ function bind(){
     renderSingleCargoControls();
     recalc();
   });
-  const cargoType=$('cargoType');
+  const cargoType=getGlobalTypeSelect();
   if(cargoType) cargoType.addEventListener('change', e=>{
     app.singleCargoTypeKey=e.target.value;
     app.lastLoadRequest=null;
@@ -1159,7 +1223,7 @@ function bind(){
     renderSingleCargoControls();
     recalc();
   });
-  const cargoRho=$('cargoRho');
+  const cargoRho=getGlobalRhoInput();
   if(cargoRho){
     cargoRho.addEventListener('input', e=>{
       const val=parseFloat(e.target.value);
@@ -1178,9 +1242,12 @@ function bind(){
     });
   }
 
-  if($('mp_cancel')) $('mp_cancel').addEventListener('click', closeProductModal);
-  const prodForm=$('mp_form');
+  const prodCancel=getProductCancelButton();
+  if(prodCancel) prodCancel.addEventListener('click', closeProductModal);
+  const prodForm=getProductForm();
   if(prodForm) prodForm.addEventListener('submit', saveProductFromModal);
+  const prodSave=getProductSaveButton();
+  if(prodSave) prodSave.addEventListener('click', saveProductFromModal);
 
   // тесты
   if($('runTests')) $('runTests').addEventListener('click', runTests);
@@ -1226,10 +1293,16 @@ function saveTruck(){
 
 // ===== Modal logic (products)
 function openProductModal(){
-  const modal=$('modalProduct');
+  const modal=getProductModalElement();
   if(!modal) return;
-  const form=$('mp_form');
+  const form=getProductForm();
   if(form) form.reset();
+  else {
+    const nameInput=getProductNameInput();
+    const rhoInput=getProductRhoInput();
+    if(nameInput) nameInput.value='';
+    if(rhoInput) rhoInput.value='';
+  }
   if(productModalKeyHandler){
     document.removeEventListener('keydown', productModalKeyHandler);
     productModalKeyHandler=null;
@@ -1242,10 +1315,10 @@ function openProductModal(){
   };
   document.addEventListener('keydown', productModalKeyHandler);
   modal.classList.add('open');
-  setTimeout(()=>{ try{ $('mp_name')?.focus(); }catch(_){} }, 0);
+  setTimeout(()=>{ try{ getProductNameInput()?.focus(); }catch(_){} }, 0);
 }
 function closeProductModal(){
-  const modal=$('modalProduct');
+  const modal=getProductModalElement();
   if(modal) modal.classList.remove('open');
   if(productModalKeyHandler){
     document.removeEventListener('keydown', productModalKeyHandler);
@@ -1253,18 +1326,18 @@ function closeProductModal(){
   }
 }
 function saveProductFromModal(event){
-  if(event) event.preventDefault();
-  const nameInput=$('mp_name');
+  if(event && typeof event.preventDefault==='function') event.preventDefault();
+  const nameInput=getProductNameInput();
   let name=(nameInput?.value||'').trim();
   if(!name){ showToast('Укажите название груза', 'warn'); nameInput?.focus(); return; }
   const normalizedName=name.replace(/\s+/g,' ');
   if(normalizedName.length>80){ showToast('Название не должно превышать 80 символов', 'warn'); nameInput?.focus(); return; }
-  const rhoInput=$('mp_rho');
+  const rhoInput=getProductRhoInput();
   const rhoStr=(rhoInput?.value||'').trim();
   const rho=parseFloat(rhoStr);
   if(!Number.isFinite(rho) || rho<=0){ showToast('Плотность должна быть >0 кг/л', 'warn'); rhoInput?.focus(); return; }
   const rhoRounded=Number(rho.toFixed(3));
-  const key=addCustomProduct(normalizedName, rhoRounded, '—');
+  const key=addCustomProduct(normalizedName, rhoRounded);
   app.singleCargoTypeKey=key;
   app.singleCargoRho=rhoRounded;
   closeProductModal();
