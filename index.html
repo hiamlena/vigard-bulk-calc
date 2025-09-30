@@ -14,6 +14,13 @@
     .muted{color:var(--muted);font-size:14px}
     .grid{display:grid;gap:16px}
     @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+    .layout-grid{display:grid;gap:16px;grid-template-columns:1fr;grid-template-areas:"config" "main" "route" "results"}
+    .layout-grid .card{height:100%}
+    .layout-config{grid-area:config}
+    .layout-main{grid-area:main}
+    .layout-route{grid-area:route}
+    .layout-results{grid-area:results}
+    @media(min-width:980px){.layout-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"config config" "main route" "results results"}}
     .card{background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 16px rgba(0,0,0,.04)}
     .card .c{padding:16px}
     label{display:block;font-size:13px;color:#374151;margin:6px 0}
@@ -68,80 +75,30 @@
       </div>
     </div>
 
-    <div class="card"><div class="c">
-      <h2 style="margin:0 0 12px">Конфигурация</h2>
-      <div class="row cols-3">
-        <div>
-          <label>Тягач (оси)</label>
-          <select id="tractorAxles"><option value="2">2</option><option value="3">3</option></select>
+    <div class="layout-grid">
+      <div class="card layout-config"><div class="c">
+        <h2 style="margin:0 0 12px">Конфигурация</h2>
+        <div class="row cols-3">
+          <div>
+            <label>Тягач (оси)</label>
+            <select id="tractorAxles"><option value="2">2</option><option value="3">3</option></select>
+          </div>
+          <div>
+            <label>Тягач (госномер)</label>
+            <select id="tractorSelect"></select>
+          </div>
+          <div>
+            <label>Прицеп (номер)</label>
+            <select id="trailerSelect"></select>
+          </div>
+          <div class="btns" style="align-items:end">
+            <button class="btn" id="addTrailer">Добавить прицеп</button>
+          </div>
         </div>
-        <div>
-          <label>Тягач (госномер)</label>
-          <select id="tractorSelect"></select>
-        </div>
-        <div>
-          <label>Прицеп (номер)</label>
-          <select id="trailerSelect"></select>
-        </div>
-        <div class="btns" style="align-items:end">
-          <button class="btn" id="addTrailer">Добавить прицеп</button>
-        </div>
-      </div>
-      <div id="trailerInfo" class="small" style="margin-top:6px"></div>
-    </div></div>
+        <div id="trailerInfo" class="small" style="margin-top:6px"></div>
+      </div></div>
 
-    <!-- Маршрут и стоимость -->
-    <div class="card"><div class="c">
-      <h2 style="margin:0 0 12px">Маршрут и стоимость</h2>
-      <div class="row cols-3">
-        <div>
-          <label>Режим расстояния</label>
-          <select id="distanceMode">
-            <option value="manual" selected>Вручную</option>
-            <option value="gmaps">Google Maps</option>
-          </select>
-        </div>
-        <div>
-          <label>Расстояние, км (если вручную)</label>
-          <input id="distanceKm" type="number" placeholder="350">
-        </div>
-        <div>
-          <label>Ставка, ₽/км</label>
-          <input id="ratePerKm" type="number" placeholder="120">
-        </div>
-      </div>
-      <div class="row cols-3" id="gmapsRow" style="display:none">
-        <div>
-          <label>Откуда (город)</label>
-          <input id="routeFrom" placeholder="Кропоткин">
-        </div>
-        <div>
-          <label>Куда (город)</label>
-          <input id="routeTo" placeholder="Краснодар">
-        </div>
-        <div style="align-self:end" class="btns">
-          <input id="gmapsKey" placeholder="Google API key" class="small" style="width:56%">
-          <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
-          <button class="btn" id="btnGmaps">Получить расстояние</button>
-        </div>
-      </div>
-      <div class="small" id="gmapsNote" style="display:none;margin-top:6px">Маршрут строится по данным Google Directions. Учитываем магистрали, но частные ограничения для грузовиков Google учитывает не везде. Для строгого соблюдения грузовых ограничений можно будет подключить иной провайдер (HERE/Yandex/ORS).</div>
-      <div class="kpi" style="margin-top:12px">
-        <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
-        <div class="box"><div class="t">Ставка</div><div class="v" id="kpiRate">—</div></div>
-        <div class="box"><div class="t">Рейсов</div><div class="v" id="kpiTrips">—</div></div>
-        <div class="box"><div class="t">Итого стоимость</div><div class="v" id="kpiCost">—</div></div>
-      </div>
-      <div class="row cols-3" style="margin-top:8px">
-        <div>
-          <label>Количество рейсов</label>
-          <input id="trips" type="number" value="1">
-        </div>
-      </div>
-    </div></div>
-
-    <div class="grid" style="margin-top:16px">
-      <div class="card"><div class="c">
+      <div class="card layout-main"><div class="c">
         <h3 style="margin:0 0 8px">Отсеки / позиции</h3>
         <div id="ethanolBanner" class="banner" style="display:none">Перевозка спирта временно приостановлена в ТК «Вигард». Расчёт доступен, но оформление заявки недоступно.</div>
         <div id="tankSection">
@@ -196,7 +153,57 @@
         </div>
       </div></div>
 
-      <div class="card"><div class="c">
+      <!-- Маршрут и стоимость -->
+      <div class="card layout-route"><div class="c">
+        <h2 style="margin:0 0 12px">Маршрут и стоимость</h2>
+        <div class="row cols-3">
+          <div>
+            <label>Режим расстояния</label>
+            <select id="distanceMode">
+              <option value="manual" selected>Вручную</option>
+              <option value="gmaps">Google Maps</option>
+            </select>
+          </div>
+          <div>
+            <label>Расстояние, км (если вручную)</label>
+            <input id="distanceKm" type="number" placeholder="350">
+          </div>
+          <div>
+            <label>Ставка, ₽/км</label>
+            <input id="ratePerKm" type="number" placeholder="120">
+          </div>
+        </div>
+        <div class="row cols-3" id="gmapsRow" style="display:none">
+          <div>
+            <label>Откуда (город)</label>
+            <input id="routeFrom" placeholder="Кропоткин">
+          </div>
+          <div>
+            <label>Куда (город)</label>
+            <input id="routeTo" placeholder="Краснодар">
+          </div>
+          <div style="align-self:end" class="btns">
+            <input id="gmapsKey" placeholder="Google API key" class="small" style="width:56%">
+            <label class="small" style="display:flex;gap:6px;align-items:center"><input id="avoidTolls" type="checkbox"> избегать платных</label>
+            <button class="btn" id="btnGmaps">Получить расстояние</button>
+          </div>
+        </div>
+        <div class="small" id="gmapsNote" style="display:none;margin-top:6px">Маршрут строится по данным Google Directions. Учитываем магистрали, но частные ограничения для грузовиков Google учитывает не везде. Для строгого соблюдения грузовых ограничений можно будет подключить иной провайдер (HERE/Yandex/ORS).</div>
+        <div class="kpi" style="margin-top:12px">
+          <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
+          <div class="box"><div class="t">Ставка</div><div class="v" id="kpiRate">—</div></div>
+          <div class="box"><div class="t">Рейсов</div><div class="v" id="kpiTrips">—</div></div>
+          <div class="box"><div class="t">Итого стоимость</div><div class="v" id="kpiCost">—</div></div>
+        </div>
+        <div class="row cols-3" style="margin-top:8px">
+          <div>
+            <label>Количество рейсов</label>
+            <input id="trips" type="number" value="1">
+          </div>
+        </div>
+      </div></div>
+
+      <div class="card layout-results"><div class="c">
         <h3 style="margin:0 0 8px">Итоги и предупреждения</h3>
         <div class="kpi">
           <div class="box"><div class="t">Сумма литров</div><div class="v" id="sumL">—</div></div>
