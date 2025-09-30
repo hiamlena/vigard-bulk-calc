@@ -161,7 +161,7 @@
             <label>Режим расстояния</label>
             <select id="distanceMode">
               <option value="manual" selected>Вручную</option>
-              <option value="gmaps">Google Maps</option>
+              <option value="maps">Google Maps</option>
             </select>
           </div>
           <div>
@@ -188,6 +188,7 @@
             <button class="btn" id="btnGmaps">Получить расстояние</button>
           </div>
         </div>
+        <input id="avoidScales" type="checkbox" style="display:none" aria-hidden="true">
         <div class="small" id="gmapsNote" style="display:none;margin-top:6px">Маршрут строится по данным Google Directions. Учитываем магистрали, но частные ограничения для грузовиков Google учитывает не везде. Для строгого соблюдения грузовых ограничений можно будет подключить иной провайдер (HERE/Yandex/ORS).</div>
         <div class="kpi" style="margin-top:12px">
           <div class="box"><div class="t">Расстояние</div><div class="v" id="kpiDistance">—</div></div>
@@ -210,6 +211,7 @@
           <div class="box"><div class="t">Сумма массы</div><div class="v" id="sumKg">—</div></div>
         </div>
         <ul id="warnList" class="small" style="margin-top:8px"></ul>
+        <div class="small" id="routeCostSummary" style="margin-top:12px"></div>
         <div style="margin-top:16px">
           <div style="font-weight:600;margin-bottom:6px">Мини‑бриф</div>
           <textarea id="brief" rows="8" readonly></textarea>
