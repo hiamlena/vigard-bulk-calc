@@ -424,13 +424,16 @@ let app={
   tractorPlate:null,
   selectedTrailerId:null,
   trailerState:null,
-  distanceMode:'manual',   // 'manual' | 'gmaps'
+  distanceMode:'manual',   // 'manual' | 'maps'
   provider:'google',       // 'google' | 'yandex'
   distanceKm:0,
   ratePerKm:0,
   trips:1,
   routeFrom:'',
   routeTo:'',
+  avoidTolls:false,
+  truckMode:true,
+  avoidScales:false,
   singleCargo:true,
   singleCargoTypeKey:'diesel',
   singleCargoRho:0.84,
@@ -440,7 +443,7 @@ let app={
   pendingOverflowToast:false,
   lastOverflowLiters:0
 };
-if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // миграция на новое имя
+if (app.distanceMode === 'gmaps') app.distanceMode = 'maps'; // миграция со старого имени
 
 function loadState(){
   try{
@@ -474,6 +477,13 @@ function normalizeLoadedState(raw){
   const rhoNum = Number(raw.singleCargoRho);
   normalized.singleCargoRho = (Number.isFinite(rhoNum) && rhoNum>0) ? rhoNum : 0.84;
   delete normalized.singleCargoAdr;
+
+  const modeRaw = raw.distanceMode === 'gmaps' ? 'maps' : raw.distanceMode;
+  normalized.distanceMode = modeRaw === 'maps' ? 'maps' : 'manual';
+  normalized.provider = raw.provider === 'yandex' ? 'yandex' : 'google';
+  normalized.avoidTolls = !!raw.avoidTolls;
+  normalized.truckMode = raw.truckMode !== false;
+  normalized.avoidScales = !!raw.avoidScales;
 
   const massVal = raw.totalMassT;
   normalized.totalMassT = (massVal!==undefined && massVal!==null) ? String(massVal) : '';
@@ -775,18 +785,23 @@ function renderCurrent(){
 
   const provEl = $('provider'); if (provEl) provEl.value = app.provider||'google';
 
-  const isMaps = (app.distanceMode === 'gmaps' || app.distanceMode === 'maps');
-  if($('distanceMode')) $('distanceMode').value = isMaps ? 'gmaps' : 'manual';
+  const isMaps = (app.distanceMode === 'maps' || app.distanceMode === 'gmaps');
+  if($('distanceMode')) $('distanceMode').value = isMaps ? 'maps' : 'manual';
 
-  if($('distanceKm')) $('distanceKm').value = app.distanceKm || '';
-  if($('ratePerKm'))  $('ratePerKm').value  = app.ratePerKm || '';
-  if($('trips'))      $('trips').value      = app.trips || 1;
+  if($('distanceKm')) $('distanceKm').value = Number.isFinite(app.distanceKm) ? String(app.distanceKm) : '';
+  if($('ratePerKm'))  $('ratePerKm').value  = Number.isFinite(app.ratePerKm) ? String(app.ratePerKm) : '';
+  if($('trips'))      $('trips').value      = Number.isFinite(app.trips) ? String(app.trips) : '1';
 
   if($('routeFrom'))  $('routeFrom').value  = app.routeFrom || '';
   if($('routeTo'))    $('routeTo').value    = app.routeTo   || '';
 
+  if($('avoidTolls')) $('avoidTolls').checked = !!app.avoidTolls;
+  if($('truckMode')) $('truckMode').checked = !!app.truckMode;
+  if($('avoidScales')) $('avoidScales').checked = !!app.avoidScales;
+
   if($('gmapsRow'))  $('gmapsRow').style.display  = isMaps ? 'grid'  : 'none';
   if($('gmapsNote')) $('gmapsNote').style.display = isMaps ? 'block' : 'none';
+  if($('mapsNote')) $('mapsNote').style.display = isMaps ? 'block' : 'none';
 
   const platformSection=$('platformSection');
   if(platformSection) platformSection.style.display='none';
@@ -818,6 +833,15 @@ function recalc(){
   let totalLiters=0;
   let totalKg=0;
   let showLiters=false;
+  let distanceValid=false;
+  let rateValid=false;
+  let tripsValid=false;
+  let costValid=false;
+  let distanceText='';
+  let rateText='';
+  let tripsText='';
+  let costText='';
+  let cost=0;
 
   const tractorSelects=getTractorSelects();
   if(tractorSelects.length){
@@ -1007,6 +1031,75 @@ function recalc(){
   if($('sumL')) $('sumL').textContent = showLiters ? fmtL(totalLiters) : '—';
   if($('sumKg')) $('sumKg').textContent = fmtKg(totalKg);
 
+  const providerEl=$('provider');
+  if(providerEl){
+    const val=(providerEl.value||'').toLowerCase();
+    app.provider = val==='yandex' ? 'yandex' : 'google';
+  } else if(app.provider!=='yandex'){ app.provider='google'; }
+
+  const distanceModeEl=$('distanceMode');
+  if(distanceModeEl){
+    app.distanceMode = distanceModeEl.value==='maps' ? 'maps' : 'manual';
+  } else if(app.distanceMode==='gmaps'){ app.distanceMode='maps'; }
+
+  const avoidTollsEl=$('avoidTolls');
+  app.avoidTolls = avoidTollsEl ? !!avoidTollsEl.checked : false;
+  const truckModeEl=$('truckMode');
+  app.truckMode = truckModeEl ? !!truckModeEl.checked : false;
+  const avoidScalesEl=$('avoidScales');
+  app.avoidScales = avoidScalesEl ? !!avoidScalesEl.checked : false;
+
+  const routeFromEl=$('routeFrom'); if(routeFromEl) app.routeFrom = routeFromEl.value||'';
+  const routeToEl=$('routeTo'); if(routeToEl) app.routeTo = routeToEl.value||'';
+
+  const distanceEl=$('distanceKm');
+  const rateEl=$('ratePerKm');
+  const tripsEl=$('trips');
+  if(distanceEl){
+    const parsed=num(distanceEl.value, NaN);
+    app.distanceKm = Number.isFinite(parsed) ? parsed : 0;
+  } else if(!Number.isFinite(app.distanceKm)) app.distanceKm=0;
+  if(rateEl){
+    const parsed=num(rateEl.value, NaN);
+    app.ratePerKm = Number.isFinite(parsed) ? parsed : 0;
+  } else if(!Number.isFinite(app.ratePerKm)) app.ratePerKm=0;
+  if(tripsEl){
+    const parsed=parseInt(tripsEl.value,10);
+    app.trips = Number.isFinite(parsed) ? parsed : 0;
+  } else if(!Number.isFinite(app.trips)) app.trips=0;
+
+  cost = app.distanceKm * app.ratePerKm * app.trips;
+  distanceValid = Number.isFinite(app.distanceKm) && app.distanceKm>0;
+  rateValid = Number.isFinite(app.ratePerKm) && app.ratePerKm>0;
+  tripsValid = Number.isFinite(app.trips) && app.trips>0;
+  costValid = distanceValid && rateValid && tripsValid;
+  if(distanceValid) distanceText = Math.round(app.distanceKm).toLocaleString('ru-RU'); else distanceText='';
+  if(rateValid) rateText = app.ratePerKm.toLocaleString('ru-RU'); else rateText='';
+  if(tripsValid) tripsText = app.trips.toLocaleString('ru-RU'); else tripsText='';
+  if(costValid) costText = cost.toLocaleString('ru-RU'); else costText='';
+
+  const fromTrim=(app.routeFrom||'').trim();
+  const toTrim=(app.routeTo||'').trim();
+  if(app.distanceMode==='maps'){
+    const key=(typeof mapsApiKey==='function')?mapsApiKey():'';
+    if(!key || !fromTrim || !toTrim){
+      const msg='Маршрут по картам: нет API-ключа и/или адресов — используйте ручной ввод расстояния';
+      if(!warns.includes(msg)) warns.push(msg);
+    }
+  }
+  if(!distanceValid){
+    const msg='Расстояние не задано или некорректно';
+    if(!warns.includes(msg)) warns.push(msg);
+  }
+  if(!rateValid){
+    const msg='Ставка не задана или некорректна';
+    if(!warns.includes(msg)) warns.push(msg);
+  }
+  if(!tripsValid){
+    const msg='Количество рейсов должно быть ≥ 1';
+    if(!warns.includes(msg)) warns.push(msg);
+  }
+
   const ul=$('warnList');
   if(ul){
     ul.innerHTML='';
@@ -1023,14 +1116,36 @@ function recalc(){
     }
   }
 
-  app.distanceKm=num($('distanceKm')?.value, app.distanceKm||0);
-  app.ratePerKm=num($('ratePerKm')?.value, app.ratePerKm||0);
-  app.trips=parseInt($('trips')?.value)||app.trips||1;
-  const cost=app.distanceKm*app.ratePerKm*app.trips;
-  if($('kpiDistance')) $('kpiDistance').textContent = (isFinite(app.distanceKm)&&app.distanceKm>0)? (Math.round(app.distanceKm).toLocaleString('ru-RU')+' км'):'—';
-  if($('kpiRate')) $('kpiRate').textContent = (isFinite(app.ratePerKm)&&app.ratePerKm>0)? (app.ratePerKm.toLocaleString('ru-RU')+' ₽/км'):'—';
-  if($('kpiTrips')) $('kpiTrips').textContent = String(app.trips);
-  if($('kpiCost')) $('kpiCost').textContent = (isFinite(cost)&&cost>0)? cost.toLocaleString('ru-RU')+' ₽' : '—';
+  if($('kpiDistance')) $('kpiDistance').textContent = distanceValid ? `${distanceText} км` : '—';
+  if($('kpiRate')) $('kpiRate').textContent = rateValid ? `${rateText} ₽/км` : '—';
+  if($('kpiTrips')) $('kpiTrips').textContent = tripsValid ? tripsText : '—';
+  if($('kpiCost')) $('kpiCost').textContent = costValid ? `${costText} ₽` : '—';
+
+  const tagsRaw=[];
+  if(app.truckMode) tagsRaw.push('грузовой режим');
+  if(app.avoidTolls) tagsRaw.push('без платных');
+  if(app.avoidScales) tagsRaw.push('объезд весовых');
+  const providerLabel=app.provider==='yandex'?'yandex':'google';
+  const modeLabel=app.distanceMode==='maps'?'карты':'вручную';
+  const tagsSummary = tagsRaw.length ? tagsRaw.map(t=>`[${t}]`).join(' ') : '—';
+  const tagsBrief = tagsRaw.length ? tagsRaw.map(t=>`[${t}]`).join('') : '';
+  const routeSegment = (fromTrim && toTrim) ? `${fromTrim} → ${toTrim}` : '—';
+
+  const summaryBox=$('routeCostSummary');
+  if(summaryBox){
+    summaryBox.innerHTML='';
+    const title=document.createElement('div');
+    title.textContent='Маршрут и стоимость';
+    title.style.fontWeight='600';
+    title.style.marginBottom='4px';
+    summaryBox.appendChild(title);
+    const routeLine=document.createElement('div');
+    routeLine.textContent=`Маршрут: ${routeSegment} · Провайдер: ${providerLabel} · Режим: ${modeLabel} · Теги: ${tagsSummary}`;
+    summaryBox.appendChild(routeLine);
+    const calcLine=document.createElement('div');
+    calcLine.textContent = costValid ? `Расчёт: ${distanceText} км × ${rateText} ₽/км × ${tripsText} рейс(ов) = Итого: ${costText} ₽` : 'Расчёт: —';
+    summaryBox.appendChild(calcLine);
+  }
 
   const t=getAllTrailers().find(x=>x.id===app.selectedTrailerId);
   const products=getAllProducts();
@@ -1056,10 +1171,10 @@ function recalc(){
       lines.push(`#${i+1}: ${fmtT2((kg||0)/1000)}`);
     });
   }
-  const routeStr=(app.routeFrom||app.routeTo)? `Маршрут: ${app.routeFrom||'?'} → ${app.routeTo||'?'}`:'';
-  const costStr=(isFinite(cost)&&cost>0)? `Стоимость: ${cost.toLocaleString('ru-RU')} ₽ (${app.distanceKm} км × ${app.ratePerKm} ₽/км × ${app.trips} рейс.)`:'';
-  if(routeStr) lines.push(routeStr);
-  if(costStr) lines.push(costStr);
+  const routeLineBrief=`Маршрут: ${routeSegment} · Провайдер: ${providerLabel} · Режим: ${modeLabel}${tagsBrief?` ${tagsBrief}`:''}`;
+  const costLineBrief = costValid ? `Стоимость: ${costText} ₽ (${distanceText} км × ${rateText} ₽/км × ${tripsText} рейс.)` : 'Стоимость: —';
+  lines.push(routeLineBrief);
+  lines.push(costLineBrief);
   if($('brief')) $('brief').value = lines.join('\n');
 
   saveState();
@@ -1087,16 +1202,32 @@ function bind(){
   if($('tractorAxles')) $('tractorAxles').addEventListener('change', e=>{ const ax=parseInt(e.target.value)||2; app.tractorAxles=ax; setTruckAxles(app.tractorPlate, ax); saveState(); recalc(); });
 
   const provEl = $('provider');
-  if (provEl) provEl.addEventListener('change', e=>{ app.provider=e.target.value; saveState(); maybeInitMaps(); });
+  if (provEl) provEl.addEventListener('change', e=>{
+    const val=(e.target.value||'').toLowerCase();
+    app.provider = val==='yandex' ? 'yandex' : 'google';
+    saveState();
+    recalc();
+    maybeInitMaps();
+  });
 
   const dmEl = $('distanceMode');
   if (dmEl) dmEl.addEventListener('change', e=>{
-    app.distanceMode=e.target.value;
-    const isMaps = (app.distanceMode==='gmaps' || app.distanceMode==='maps');
-    if($('gmapsRow')) $('gmapsRow').style.display=(isMaps)?'grid':'none';
-    if($('gmapsNote')) $('gmapsNote').style.display=(isMaps)?'block':'none';
-    saveState(); maybeInitMaps();
+    app.distanceMode=e.target.value==='maps'?'maps':'manual';
+    const isMaps = app.distanceMode==='maps';
+    if($('gmapsRow')) $('gmapsRow').style.display=isMaps?'grid':'none';
+    if($('gmapsNote')) $('gmapsNote').style.display=isMaps?'block':'none';
+    if($('mapsNote')) $('mapsNote').style.display=isMaps?'block':'none';
+    saveState();
+    recalc();
+    maybeInitMaps();
   });
+
+  const avoidTollsEl=$('avoidTolls');
+  if(avoidTollsEl) avoidTollsEl.addEventListener('change', e=>{ app.avoidTolls=!!e.target.checked; saveState(); recalc(); });
+  const truckModeEl=$('truckMode');
+  if(truckModeEl) truckModeEl.addEventListener('change', e=>{ app.truckMode=!!e.target.checked; saveState(); recalc(); });
+  const avoidScalesEl=$('avoidScales');
+  if(avoidScalesEl) avoidScalesEl.addEventListener('change', e=>{ app.avoidScales=!!e.target.checked; saveState(); recalc(); });
 
   if($('resetPreset')) $('resetPreset').addEventListener('click', ()=>selectTrailer(app.selectedTrailerId));
   if($('copyBrief')) $('copyBrief').addEventListener('click', ()=>navigator.clipboard.writeText($('brief').value));
@@ -1106,9 +1237,12 @@ function bind(){
   ['distanceKm','ratePerKm','trips','routeFrom','routeTo'].forEach(id=>{
     const el=$(id);
     if(el) el.addEventListener('input', ()=>{
-      app.distanceKm=num($('distanceKm')?.value,0);
-      app.ratePerKm=num($('ratePerKm')?.value,0);
-      app.trips=parseInt($('trips')?.value)||1;
+      const distVal=num($('distanceKm')?.value, NaN);
+      app.distanceKm=Number.isFinite(distVal)?distVal:0;
+      const rateVal=num($('ratePerKm')?.value, NaN);
+      app.ratePerKm=Number.isFinite(rateVal)?rateVal:0;
+      const tripsVal=parseInt($('trips')?.value,10);
+      app.trips=Number.isFinite(tripsVal)?tripsVal:0;
       app.routeFrom=$('routeFrom')?.value||'';
       app.routeTo=$('routeTo')?.value||'';
       saveState(); recalc();
@@ -1153,7 +1287,9 @@ function bind(){
 
   // карты
   if($('btnRoute')) $('btnRoute').addEventListener('click', buildRoute);
-  if($('mapsKey')) $('mapsKey').addEventListener('input', ()=>maybeInitMaps());
+  if($('btnGmaps')) $('btnGmaps').addEventListener('click', buildRoute);
+  if($('mapsKey')) $('mapsKey').addEventListener('input', ()=>{ maybeInitMaps(); recalc(); });
+  if($('gmapsKey')) $('gmapsKey').addEventListener('input', ()=>{ maybeInitMaps(); recalc(); });
 
   // пакетное распределение
   const totalMassInput=$('totalMassT');
@@ -1541,7 +1677,7 @@ function runTests(){
 // ===== Boot =====
 function boot(){
   loadState();
-  if (app.distanceMode === 'maps') app.distanceMode = 'gmaps'; // страховка
+  if (app.distanceMode === 'gmaps') app.distanceMode = 'maps';
 
   const trailers=getAllTrailers();
   if(trailers.length){

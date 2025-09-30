@@ -127,6 +127,7 @@
           <button class="btn" id="btnRoute">Построить маршрут</button>
         </div>
       </div>
+      <input id="avoidScales" type="checkbox" style="display:none" aria-hidden="true">
       <div class="small" id="mapsNote" style="display:none;margin-top:6px">* «Грузовой режим» приблизительно учитывает объезды (добавляет ~12% к километражу). Для строгих ограничений можно интегрировать HERE/Yandex Truck API.</div>
 
       <div class="row cols-3" style="margin-top:8px">
@@ -223,6 +224,7 @@
           <div class="box"><div class="t">Сумма массы</div><div class="v" id="sumKg">—</div></div>
         </div>
         <ul id="warnList" class="small" style="margin-top:8px"></ul>
+        <div class="small" id="routeCostSummary" style="margin-top:12px"></div>
         <div style="margin-top:16px">
           <div style="font-weight:600;margin-bottom:6px">Мини-бриф</div>
           <textarea id="brief" rows="8" readonly></textarea>
